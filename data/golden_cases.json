@@ -1,0 +1,141 @@
+[
+ {
+  "scenario": 1,
+  "title": "UTG Open",
+  "combo": "5h6h",
+  "expected": {
+   "reach": 100.0,
+   "raise": 36.4,
+   "fold": 63.6
+  }
+ },
+ {
+  "scenario": 1,
+  "title": "UTG Open",
+  "combo": "AhKd",
+  "expected": {
+   "reach": 100.0,
+   "raise": 100.0,
+   "fold": 0
+  }
+ },
+ {
+  "scenario": 6,
+  "title": "BB vs UTG 2.5BB",
+  "combo": "AdKh",
+  "expected": {
+   "reach": 100.0,
+   "call": 1.64,
+   "raise": 98.36,
+   "fold": 0
+  }
+ },
+ {
+  "scenario": 6,
+  "title": "BB vs UTG 2.5BB",
+  "combo": "QdQh",
+  "expected": {
+   "reach": 100.0,
+   "call": 29.71,
+   "raise": 70.29,
+   "fold": 0
+  }
+ },
+ {
+  "scenario": 21,
+  "title": "UTG vs BB 3Bet",
+  "combo": "5h6h",
+  "expected": {
+   "reach": 36.4,
+   "call": 24.04,
+   "raise": 0.0,
+   "fold": 75.96
+  }
+ },
+ {
+  "scenario": 21,
+  "title": "UTG vs BB 3Bet",
+  "combo": "AdKh",
+  "expected": {
+   "reach": 100.0,
+   "call": 53.14,
+   "raise": 46.86,
+   "fold": 0
+  }
+ },
+ {
+  "scenario": 22,
+  "title": "UTG vs SB 3Bet",
+  "combo": "AhJh",
+  "expected": {
+   "reach": 100.0,
+   "call": 63.04,
+   "raise": 0.0,
+   "fold": 36.96
+  }
+ },
+ {
+  "scenario": 36,
+  "title": "BB vs UTG 4Bet",
+  "combo": "AdKh",
+  "expected": {
+   "reach": 98.36,
+   "call": 0.0,
+   "shove": 100.0,
+   "fold": 0
+  }
+ },
+ {
+  "scenario": 51,
+  "title": "UTG vs BB 5Bet",
+  "combo": "AdKh",
+  "expected": {
+   "reach": 46.86,
+   "call": 56.08,
+   "fold": 43.92
+  }
+ },
+ {
+  "scenario": 65,
+  "title": "SB vs BB 5Bet",
+  "combo": "AhQd",
+  "expected": {
+   "reach": 69.91,
+   "call": 100.0,
+   "fold": 0
+  }
+ },
+ {
+  "scenario": 86,
+  "title": "UTG vs. HJ + BB SQ",
+  "combo": "QdQh",
+  "expected": {
+   "reach": 100.0,
+   "call": 34.82,
+   "raise": 0.0,
+   "shove": 65.18,
+   "fold": 0
+  }
+ },
+ {
+  "scenario": 126,
+  "title": "SB Caller vs. UTG + BB SQ",
+  "combo": "AhQh",
+  "expected": {
+   "reach": 74.68,
+   "call": 5.7,
+   "shove": 8.99,
+   "fold": 85.31
+  }
+ },
+ {
+  "scenario": 5,
+  "title": "SB Open",
+  "combo": "2h7d",
+  "expected": {
+   "reach": 100.0,
+   "raise": 0.0,
+   "fold": 100.0
+  }
+ }
+]
