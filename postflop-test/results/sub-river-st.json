@@ -1,0 +1,124 @@
+{
+ "type": "done",
+ "crossOriginIsolated": true,
+ "sab": true,
+ "buildMs": 5.239999999757856,
+ "mem": 198772,
+ "memC": 143512,
+ "compress": false,
+ "variant": "st",
+ "threads": 1,
+ "sizes": {
+  "flop": [
+   "33%,75%,a",
+   "3x"
+  ],
+  "turn": [
+   "33%,75%,a",
+   "3x"
+  ],
+  "river": [
+   "33%,75%,a",
+   "3x"
+  ]
+ },
+ "solveMs": 34.68500000005588,
+ "iterations": 80,
+ "exploitability": 0.8453469276428223,
+ "target": 1.135,
+ "explPct": 0.37239952759595696,
+ "wasmBytes": 2490368,
+ "trace": [
+  [
+   0,
+   175.583251953125
+  ],
+  [
+   10,
+   34.796836853027344
+  ],
+  [
+   20,
+   10.045158386230469
+  ],
+  [
+   30,
+   3.3018174171447754
+  ],
+  [
+   40,
+   1.9422035217285156
+  ],
+  [
+   50,
+   2.081266403198242
+  ],
+  [
+   60,
+   1.3873720169067383
+  ],
+  [
+   70,
+   2.4236154556274414
+  ],
+  [
+   80,
+   0.8453469276428223
+  ]
+ ],
+ "strategy": {
+  "root": {
+   "history": [],
+   "player": "oop",
+   "actions": [
+    "Check:0",
+    "Bet:75",
+    "Bet:170",
+    "Allin:889"
+   ],
+   "freq": {
+    "Check:0": 94.21,
+    "Bet:75": 5.76,
+    "Bet:170": 0.03,
+    "Allin:889": 0
+   }
+  },
+  "afterCheck": {
+   "history": [
+    0
+   ],
+   "player": "ip",
+   "actions": [
+    "Check:0",
+    "Bet:75",
+    "Bet:170",
+    "Allin:889"
+   ],
+   "freq": {
+    "Check:0": 47.83,
+    "Bet:75": 32.08,
+    "Bet:170": 14.07,
+    "Allin:889": 6.01
+   }
+  },
+  "vsSmallBet": {
+   "history": [
+    0,
+    1
+   ],
+   "player": "oop",
+   "actions": [
+    "Fold:0",
+    "Call:0",
+    "Raise:225"
+   ],
+   "freq": {
+    "Fold:0": 27.98,
+    "Call:0": 51.04,
+    "Raise:225": 20.98
+   }
+  }
+ },
+ "wallMs": 103,
+ "peakRssMB": 0
+}
