@@ -4,7 +4,7 @@
 // window.run({variant:'mt'|'st', threads, maxIter}) -> rezultat; folosit de run.mjs și de mână din consolă.
 const log = (m) => (document.getElementById('log').textContent += m + '\n');
 window.run = async (opts) => {
-  const spot = await (await fetch('/spot.json')).json();
+  const spot = { ...(await (await fetch('/spot.json')).json()), ...(opts.override ?? {}) };
   return new Promise((resolve) => {
     const w = new Worker('/worker.js', { type: 'module' });
     const info = {};
@@ -15,7 +15,7 @@ window.run = async (opts) => {
       if (data.type === 'done' || data.type === 'error') { w.terminate(); resolve({ ...info, ...data }); }
       else Object.assign(info, data);
     };
-    w.postMessage({ ...opts, spot });
+    w.postMessage({ ...opts, override: undefined, spot });
   });
 };
 </script>
