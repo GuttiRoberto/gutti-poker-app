@@ -1,0 +1,12 @@
+{
+ "type": "error",
+ "crossOriginIsolated": true,
+ "sab": true,
+ "buildMs": 613.5999999999767,
+ "mem": 33627758176,
+ "memC": 17045855552,
+ "compress": true,
+ "message": "RuntimeError: unreachable\n    at http://localhost:8090/pkg/solver-mt/solver_bg.wasm:wasm-function[210]:0x4c234\n    at http://localhost:8090/pkg/solver-mt/solver_bg.wasm:wasm-function[292]:0x508ef\n    at http://localhost:8090/pkg/solver-mt/solver_bg.wasm:wasm-function[52]:0x3425c\n    at GameManager.allocate_memory (http://localhost:8090/pkg/solver-mt/solver.js:349:14)\n    at onmessage (http://localhost:8090/worker.js:45:7)",
+ "wallMs": 708,
+ "peakRssMB": 732
+}

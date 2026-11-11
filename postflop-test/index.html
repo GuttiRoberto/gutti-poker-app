@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><title>Test solver postflop</title>
+<pre id="log"></pre>
+<script type="module">
+// window.run({variant:'mt'|'st', threads, maxIter}) -> rezultat; folosit de run.mjs și de mână din consolă.
+const log = (m) => (document.getElementById('log').textContent += m + '\n');
+window.run = async (opts) => {
+  const spot = await (await fetch('/spot.json')).json();
+  return new Promise((resolve) => {
+    const w = new Worker('/worker.js', { type: 'module' });
+    const info = {};
+    w.onerror = (e) => { w.terminate(); resolve({ error: 'worker: ' + e.message, ...info }); };
+    w.onmessage = ({ data }) => {
+      if (data.type === 'progress') return log(`iter ${data.it}  expl ${data.expl.toFixed(4)}`);
+      log(JSON.stringify(data).slice(0, 300));
+      if (data.type === 'done' || data.type === 'error') { w.terminate(); resolve({ ...info, ...data }); }
+      else Object.assign(info, data);
+    };
+    w.postMessage({ ...opts, spot });
+  });
+};
+</script>
