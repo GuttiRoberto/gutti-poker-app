@@ -52,10 +52,20 @@ test('3-bet all-in: call-ul se compară cu call + 4-bet', () => {
   const base = parse(readFileSync(new URL('./fixtures/threebet-hand.txt', import.meta.url), 'utf8'))[0];
   const h = structuredClone(base); h.heroCards = ['Kh', 'Kd']; h.heroPos = 'UTG';
   const pre = h.streets.preflop; const i = pre.findIndex((a) => a.player === 'Hero' && a.type === 'raise');
-  pre.splice(i + 1, pre.length, { player: 'x', pos: 'CO', type: 'raise', amount: 10000, allin: true }, { player: 'Hero', type: 'call', amount: 9000, allin: true });
+  pre.splice(i + 1, pre.length, { player: 'sbplayer', pos: 'CO', type: 'raise', amount: 10000, allin: true }, { player: 'Hero', type: 'call', amount: 9000, allin: true });
   const it = computeReview([h], data).items[0];
   assert.equal(it.allin, true);
   assert.equal(it.cls, 'în grafic');
+});
+
+test('stack efectiv în afara 70–150 bb: necomparabil', () => {
+  const base = parse(readFileSync(new URL('./fixtures/threebet-hand.txt', import.meta.url), 'utf8'))[0];
+  const stack = (n) => { const h = structuredClone(base); h.players.find((p) => p.name === 'sbplayer').stack = n; return computeReview([h], data).items[0]; };
+  assert.notEqual(stack(200).cls, 'necomparabil'); // 100 bb
+  const short = stack(80); // 40 bb
+  assert.equal(short.cls, 'necomparabil');
+  assert.match(short.why, /stack efectiv 40 bb/);
+  assert.equal(stack(400).cls === 'necomparabil', false); // Hero rămâne la 100 bb, deci stackul efectiv este tot 100 bb
 });
 
 test('mână reală construită: BTN deschide AJo, SB dă 3-bet, Hero dă fold', () => {

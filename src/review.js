@@ -3,6 +3,7 @@ import { handLabel } from './handclass.js';
 import { chartDecision } from './chart3bet.js';
 
 export const REVIEW_CLASSES = ['în grafic', 'rar în grafic', 'în afara graficului', 'deschis în afara graficului', 'necomparabil'];
+export const EFF_MIN = 70, EFF_MAX = 150; // bb, intervalul în care graficul de 100 bb se aplică
 export const RESPONSE_NAMES = { fold: 'fold', call: 'call', raise: '4-bet' };
 
 // Ce a făcut Hero la primul 3-bet după ce a deschis; null dacă mâna nu are o astfel de situație.
@@ -17,7 +18,11 @@ function facing(h) {
   const clean = !acts.slice(0, i0).some((a) => a.type === 'call') && !acts.slice(i0 + 1, j).some((a) => a.type === 'call');
   // 3-bet all-in sau call all-in: nu se mai poate da 4-bet, deci call-ul este singura formă de continuare
   const allin = !!acts[j].allin || (resp.type === 'call' && !!resp.allin);
-  return { villainPos: acts[j].pos, response: resp.type, clean, allin };
+  // graficul este pentru 100 bb: la stack efectiv mult mai scurt sau mai adânc deciziile nu se mai potrivesc
+  const stackOf = (name) => h.players.find((p) => p.name === name)?.stack;
+  const eff = Math.min(stackOf('Hero'), stackOf(acts[j].player)) / h.bb;
+  const depthOk = Number.isFinite(eff) && eff >= EFF_MIN && eff <= EFF_MAX;
+  return { villainPos: acts[j].pos, response: resp.type, clean: clean && depthOk, why: !clean ? 'limp sau call între deschidere și 3-bet' : !depthOk ? `stack efectiv ${Math.round(eff)} bb, graficul este pentru 100 bb` : null, allin };
 }
 
 export function classifyResponse(chart, response, allin = false) {
@@ -34,7 +39,7 @@ export function computeReview(hands, data) {
     const label = handLabel(h.heroCards);
     const chart = f.clean ? chartDecision(data, h.heroPos, f.villainPos, label) : null;
     const cls = !chart ? 'necomparabil' : chart.reach === 0 ? 'deschis în afara graficului' : classifyResponse(chart, f.response, f.allin);
-    items.push({ h, label, heroPos: h.heroPos, villainPos: f.villainPos, response: f.response, allin: f.allin, chart, cls, net: h.heroNetBb });
+    items.push({ h, label, heroPos: h.heroPos, villainPos: f.villainPos, response: f.response, allin: f.allin, why: f.why, chart, cls, net: h.heroNetBb });
   }
   const group = (list) => ({ n: list.length, net: list.reduce((s, x) => s + x.net, 0) });
   const byClass = REVIEW_CLASSES.map((cls) => ({ cls, ...group(items.filter((x) => x.cls === cls)) })).filter((r) => r.n);
