@@ -64,6 +64,8 @@ test('pagina: încărcare, duplicate, fără păstrare între vizite', { skip: c
     assert.match(aiText, /3\s+all-in-uri cu cărți vizibile, analizate/);
     assert.match(aiText, /Prea puține all-in-uri pentru o concluzie/);
 
+    assert.match(aiText.length ? await page.innerText('#sections') : '', /1c\. Poturi 3-bet și 4-bet, ca caller/);
+
     // 3. același fișier încă o dată: nimic nou
     await page.setInputFiles('#file', [txt('toate.txt', hands)]);
     await page.waitForFunction(() => document.getElementById('kDup')?.textContent.trim() === '20');

@@ -70,6 +70,6 @@ export function summarizeAllin(hands) {
   return {
     pending: hands.length - done.length, n: withAi.length, skipped, luckBb, se, net, evNet: net - luckBb,
     bb100: n ? (100 * net) / n : null, evBb100: n ? (100 * (net - luckBb)) / n : null,
-    bands: EQ_BANDS.map(band).filter((b) => b.n), streets: ['preflop', 'flop', 'turn'].map(street).filter((s) => s.n),
+    bands: EQ_BANDS.map(band).filter((b) => b.n), streets: ['preflop', 'flop', 'turn', 'river'].map(street).filter((s) => s.n),
   };
 }

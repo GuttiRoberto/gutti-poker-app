@@ -854,7 +854,73 @@ function summarizeAllin(hands) {
   return {
     pending: hands.length - done.length, n: withAi.length, skipped, luckBb, se, net, evNet: net - luckBb,
     bb100: n ? (100 * net) / n : null, evBb100: n ? (100 * (net - luckBb)) / n : null,
-    bands: EQ_BANDS.map(band).filter((b) => b.n), streets: ['preflop', 'flop', 'turn'].map(street).filter((s) => s.n),
+    bands: EQ_BANDS.map(band).filter((b) => b.n), streets: ['preflop', 'flop', 'turn', 'river'].map(street).filter((s) => s.n),
+  };
+}
+
+// ---- handclass.js
+// Etichetă și categorie pentru cărțile lui Hero: „AKs”, „QJo”, „99” și grupe mari de mâini.
+const HC_RANKS = '23456789TJQKA';
+
+function handLabel(cards) {
+  let r1 = HC_RANKS.indexOf(cards[0][0]), r2 = HC_RANKS.indexOf(cards[1][0]), s1 = cards[0][1], s2 = cards[1][1];
+  if (r2 > r1) [r1, r2] = [r2, r1];
+  return r1 === r2 ? HC_RANKS[r1] + HC_RANKS[r2] : HC_RANKS[r1] + HC_RANKS[r2] + (s1 === s2 ? 's' : 'o');
+}
+
+const HAND_CATEGORIES = [
+  'premium (AA–QQ, AK)', 'perechi medii (JJ–88)', 'perechi mici (77–22)', 'broadway (AQ–JT, ambele cărți T sau mai mari)',
+  'as suited mic (A9s–A2s)', 'alte suited', 'alte offsuit',
+];
+
+// Indexul categoriei pentru o etichetă de tip „AKs”.
+function handCategory(label) {
+  const hi = HC_RANKS.indexOf(label[0]), lo = HC_RANKS.indexOf(label[1]);
+  if (label.length === 2) return hi >= 10 ? 0 : hi >= 6 ? 1 : 2;
+  if (hi === 12 && lo === 11) return 0;
+  if (lo >= 8) return 3;
+  if (label[2] === 's' && hi === 12) return 4;
+  return label[2] === 's' ? 5 : 6;
+}
+
+// ---- threebet.js
+// Poduri 3-bet / 4-bet: ce mâini plătește Hero, cu ce poziție, cât din rezultat este noroc la all-in, și cum răspunde la 3-bet după ce a deschis.
+
+
+
+const TB_POSITIONS = ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+const tbGroup = (list, key) => { const m = new Map(); for (const x of list) { const k = key(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); } return m; };
+const tbLuck = (h) => (h.allin && h.allin.luck != null ? h.allin.luck / h.bb : 0);
+const tbRow = (list) => {
+  const net = list.reduce((s, h) => s + h.heroNetBb, 0), luck = list.reduce((s, h) => s + tbLuck(h), 0);
+  return { n: list.length, net, perHand: list.length ? net / list.length : null, luck, netNoLuck: net - luck };
+};
+const firstRaiser = (h) => h.streets.preflop.find((a) => a.type === 'raise')?.player;
+
+function computeThreeBet(hands) {
+  // ca caller în pot 3-bet sau 4-bet+, cu flop văzut (aceleași mâini ca în „Unde se duc banii”)
+  const callers = hands.filter((h) => h.cls.sawFlop && h.cls.heroRole === 'caller' && (h.cls.potType === '3-bet' || h.cls.potType === '4-bet+'));
+  const byCategory = HAND_CATEGORIES.map((label, i) => ({ label, ...tbRow(callers.filter((h) => handCategory(handLabel(h.heroCards)) === i)) })).filter((r) => r.n);
+  const opened = callers.filter((h) => h.cls.potType === '3-bet' && firstRaiser(h) === 'Hero');
+  const openedByPos = TB_POSITIONS.map((pos) => ({ pos, ...tbRow(opened.filter((h) => h.heroPos === pos)) })).filter((r) => r.n);
+  const worstTypes = [...tbGroup(callers, (h) => handLabel(h.heroCards))].map(([label, list]) => ({ label, ...tbRow(list) }))
+    .filter((r) => r.n >= 3 && r.net < 0).sort((a, b) => a.net - b.net).slice(0, 8);
+
+  // răspunsul lui Hero la 3-bet după ce a deschis (toate mâinile, inclusiv cele terminate preflop)
+  const facing = [];
+  for (const h of hands) {
+    const acts = h.streets.preflop, i0 = acts.findIndex((a) => a.type === 'raise');
+    if (i0 < 0 || acts[i0].player !== 'Hero') continue;
+    const j = acts.findIndex((a, i) => i > i0 && a.type === 'raise' && a.player !== 'Hero');
+    if (j < 0) continue;
+    const resp = acts.find((a, i) => i > j && a.player === 'Hero' && a.type !== 'post');
+    if (resp) facing.push({ pos: h.heroPos, response: resp.type });
+  }
+  const resp = (list) => ({ n: list.length, fold: prop(list.filter((x) => x.response === 'fold').length, list.length),
+    call: prop(list.filter((x) => x.response === 'call').length, list.length), raise: prop(list.filter((x) => x.response === 'raise').length, list.length) });
+  return {
+    callers: tbRow(callers), byCategory, opened: tbRow(opened), openedByPos, worstTypes,
+    vs3bet: { total: resp(facing), byPos: TB_POSITIONS.map((pos) => ({ pos, ...resp(facing.filter((x) => x.pos === pos)) })).filter((r) => r.n) },
   };
 }
 
@@ -949,6 +1015,7 @@ async function createHandStore(backend) {
 
 // ---- ui.js
 // Interfața analizorului. La build, toate modulele sunt lipite într-un singur fișier HTML.
+
 
 
 
@@ -1090,6 +1157,17 @@ function render() {
   sec('1b. Single-raised, caller, OOP, heads-up', 'Pe poziția lui Hero și a celui care a deschis. Reperul „fold la tot” = Hero pierde doar blindul postat (1 bb din BB; din SB 0,5 bb la NL2 și 0,4 bb la NL5). Diferență pozitivă = apărarea a adus mai mult decât foldul.',
     R.total.n ? table(['Hero / deschide', '#Mâini', '#Net (bb)', '#bb/mână', '#Fold la tot (bb)', '#Diferență (bb)', '#Diferență/mână'],
       [...R.byHero.flatMap((g) => [refRow(`<b>Hero ${esc(g.heroPos)}</b>`, g), ...g.byOpener.map((o) => refRow(`&nbsp;&nbsp;contra ${esc(o.opener)}`, o))]), refRow('<b>total</b>', { ...R.total, ref: null, diff: null, diffPerHand: null })]) : '<p class="few">fără cazuri</p>');
+
+  const T = computeThreeBet(hands);
+  const tbRowTxt = (label, r) => [label, nCell(r.n), bbTxt(r.net), r.n ? bbTxt(r.perHand, 2) : '–', bbTxt(r.luck, 0), bbTxt(r.netNoLuck, 0)];
+  const tbHead = ['', '#Mâini', '#Net (bb)', '#bb/mână', '#Noroc all-in (bb)', '#Net fără noroc (bb)'];
+  const tbVs = (label, r) => [label, nCell(r.n), pctCell(r.fold), pctCell(r.call), pctCell(r.raise)];
+  sec('1c. Poturi 3-bet și 4-bet, ca caller', 'Mâinile în care Hero a plătit un 3-bet sau 4-bet și a văzut flopul. „Noroc all-in” = real − așteptat din echitate, doar la all-in-urile cu cărți vizibile.',
+    T.callers.n ? `<h3>După tipul de mână</h3>${table(['Tip de mână', ...tbHead.slice(1)], [...T.byCategory.map((r) => tbRowTxt(esc(r.label), r)), tbRowTxt('<b>total</b>', T.callers)])}
+      ${T.worstTypes.length ? `<h3>Cele mai pierzătoare mâini (cel puțin 3)</h3>${table(['Mână', ...tbHead.slice(1)], T.worstTypes.map((r) => tbRowTxt(esc(r.label), r)))}` : ''}
+      ${T.openedByPos.length ? `<h3>Hero a deschis și a plătit 3-bet, pe poziție</h3>${table(['Poziția lui Hero', ...tbHead.slice(1)], [...T.openedByPos.map((r) => tbRowTxt(esc(r.pos), r)), tbRowTxt('<b>total</b>', T.opened)])}` : ''}
+      <h3>Răspunsul la 3-bet după ce Hero a deschis</h3>${T.vs3bet.total.n ? table(['Poziția lui Hero', '#Situații', 'Fold', 'Call', '4-bet'], [...T.vs3bet.byPos.map((r) => tbVs(esc(r.pos), r)), tbVs('<b>total</b>', T.vs3bet.total)]) : '<p class="few">fără cazuri</p>'}`
+      : '<p class="few">fără cazuri</p>');
 
   const A = s.aggressor;
   sec('2. Ca agresor preflop', 'C-bet = Hero pariază primul pe flop, când nimeni nu a pariat înaintea lui.',

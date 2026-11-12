@@ -5,6 +5,7 @@ import { computeStats, describeHand } from './stats.js';
 import { readZipTexts } from './zip.js';
 import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
 import { allinEv, summarizeAllin } from './allin.js';
+import { computeThreeBet } from './threebet.js';
 import { splitRawHands, createHandStore, idsOnlyBackend } from './store.js';
 
 const $ = (id) => document.getElementById(id);
@@ -140,6 +141,17 @@ function render() {
   sec('1b. Single-raised, caller, OOP, heads-up', 'Pe poziția lui Hero și a celui care a deschis. Reperul „fold la tot” = Hero pierde doar blindul postat (1 bb din BB; din SB 0,5 bb la NL2 și 0,4 bb la NL5). Diferență pozitivă = apărarea a adus mai mult decât foldul.',
     R.total.n ? table(['Hero / deschide', '#Mâini', '#Net (bb)', '#bb/mână', '#Fold la tot (bb)', '#Diferență (bb)', '#Diferență/mână'],
       [...R.byHero.flatMap((g) => [refRow(`<b>Hero ${esc(g.heroPos)}</b>`, g), ...g.byOpener.map((o) => refRow(`&nbsp;&nbsp;contra ${esc(o.opener)}`, o))]), refRow('<b>total</b>', { ...R.total, ref: null, diff: null, diffPerHand: null })]) : '<p class="few">fără cazuri</p>');
+
+  const T = computeThreeBet(hands);
+  const tbRowTxt = (label, r) => [label, nCell(r.n), bbTxt(r.net), r.n ? bbTxt(r.perHand, 2) : '–', bbTxt(r.luck, 0), bbTxt(r.netNoLuck, 0)];
+  const tbHead = ['', '#Mâini', '#Net (bb)', '#bb/mână', '#Noroc all-in (bb)', '#Net fără noroc (bb)'];
+  const tbVs = (label, r) => [label, nCell(r.n), pctCell(r.fold), pctCell(r.call), pctCell(r.raise)];
+  sec('1c. Poturi 3-bet și 4-bet, ca caller', 'Mâinile în care Hero a plătit un 3-bet sau 4-bet și a văzut flopul. „Noroc all-in” = real − așteptat din echitate, doar la all-in-urile cu cărți vizibile.',
+    T.callers.n ? `<h3>După tipul de mână</h3>${table(['Tip de mână', ...tbHead.slice(1)], [...T.byCategory.map((r) => tbRowTxt(esc(r.label), r)), tbRowTxt('<b>total</b>', T.callers)])}
+      ${T.worstTypes.length ? `<h3>Cele mai pierzătoare mâini (cel puțin 3)</h3>${table(['Mână', ...tbHead.slice(1)], T.worstTypes.map((r) => tbRowTxt(esc(r.label), r)))}` : ''}
+      ${T.openedByPos.length ? `<h3>Hero a deschis și a plătit 3-bet, pe poziție</h3>${table(['Poziția lui Hero', ...tbHead.slice(1)], [...T.openedByPos.map((r) => tbRowTxt(esc(r.pos), r)), tbRowTxt('<b>total</b>', T.opened)])}` : ''}
+      <h3>Răspunsul la 3-bet după ce Hero a deschis</h3>${T.vs3bet.total.n ? table(['Poziția lui Hero', '#Situații', 'Fold', 'Call', '4-bet'], [...T.vs3bet.byPos.map((r) => tbVs(esc(r.pos), r)), tbVs('<b>total</b>', T.vs3bet.total)]) : '<p class="few">fără cazuri</p>'}`
+      : '<p class="few">fără cazuri</p>');
 
   const A = s.aggressor;
   sec('2. Ca agresor preflop', 'C-bet = Hero pariază primul pe flop, când nimeni nu a pariat înaintea lui.',

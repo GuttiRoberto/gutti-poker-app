@@ -6,7 +6,7 @@ import { join } from 'node:path';
 const src = (f) => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
 const strip = (code) => code.replace(/^import .*$/gm, '').replace(/^export /gm, '');
 const js = [`const REFERENCE = ${JSON.stringify(JSON.parse(src('reference.json')))};`,
-  ...['hands.js', 'classify.js', 'stats.js', 'breakdowns.js', 'equity.js', 'allin.js', 'zip.js', 'store.js', 'ui.js'].map((f) => `// ---- ${f}\n${strip(src(f))}`)].join('\n');
+  ...['hands.js', 'classify.js', 'stats.js', 'breakdowns.js', 'equity.js', 'allin.js', 'handclass.js', 'threebet.js', 'zip.js', 'store.js', 'ui.js'].map((f) => `// ---- ${f}\n${strip(src(f))}`)].join('\n');
 if (/<\/script/i.test(js)) throw new Error('codul conține </script');
 // modulele sunt lipite într-un singur script: verifică sintaxa (prinde nume declarate de două ori)
 const tmp = join(tmpdir(), `analizor-check-${process.pid}.mjs`);
