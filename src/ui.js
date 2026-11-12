@@ -4,7 +4,7 @@ import { classify } from './classify.js';
 import { computeStats, describeHand } from './stats.js';
 import { readZipTexts } from './zip.js';
 import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
-import { splitRawHands, openBrowserStore } from './store.js';
+import { splitRawHands, createHandStore, idsOnlyBackend } from './store.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -60,11 +60,12 @@ function renderStatus() {
     <div class="kpi"><b id="kDup">${L ? L.duplicates.toLocaleString('ro-RO') : '–'}</b><span>duplicate ignorate (același ID)</span></div>
     <div class="kpi"><b>${state.rejected.length}</b><span>mâini respinse</span></div>
     <div class="kpi"><b>${unknown.reduce((s, u) => s + u[1], 0)}</b><span>linii necunoscute</span></div></div>
-    <p class="sub" style="margin-top:10px">${state.store?.persistent
-    ? 'Mâinile sunt păstrate în acest browser, pe acest dispozitiv. La următoarea vizită adaugi doar fișierele noi.'
-    : 'Acest browser nu permite păstrarea mâinilor; ele rămân doar până închizi pagina.'}
-    <button id="wipe" type="button" style="margin-left:8px">Șterge tot</button></p>`;
+    <p class="sub" style="margin-top:10px">Nimic nu se păstrează: mâinile există doar cât timp pagina este deschisă. La reîncărcare dispare tot, iar fișierele rămân doar pe calculatorul tău. Salvează raportul cu „Salvează PDF”.</p>`;
+  const headShapes = {};
+  for (const r of state.rejected) if (r.sample && r.reason.startsWith('antet')) { const k = r.sample.replace(/#\S+?:/, '#ID:').replace(/[0-9]/g, 'N').slice(0, 110); headShapes[k] = (headShapes[k] ?? 0) + 1; }
+  const headList = Object.entries(headShapes).sort((a, b) => b[1] - a[1]).slice(0, 5);
   if (state.rejected.length) html += `<div class="note"><b>Mâini respinse:</b><ul class="plain">${Object.entries(reasons).map(([k, v]) => `<li>${esc(k)}: ${v}</li>`).join('')}</ul>
+    ${headList.length ? `<p class="sub" style="margin:8px 0 0">Forme de antet necunoscute:</p><ul class="plain">${headList.map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul>` : ''}
     <details><summary>Lista (${state.rejected.length})</summary><ul class="plain">${state.rejected.slice(0, 200).map((r) => `<li>${esc(r.id)} — ${esc(r.reason)}</li>`).join('')}</ul></details></div>`;
   if (unknown.length) html += `<div class="note"><b>Linii care nu se potrivesc cu nimic cunoscut</b> (mâinile respective au fost păstrate dacă potul se verifică):<ul class="plain">${unknown.slice(0, 30).map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul></div>`;
   const tb = state.hands.filter((h) => h.timeBank).reduce((s, h) => s + h.timeBank, 0), tbN = state.hands.filter((h) => h.timeBank).length;
@@ -198,7 +199,6 @@ function refresh() {
   $('fStake').innerHTML = '<option value="">toate mizele</option>' + stakes.map((s) => `<option value="${esc(s)}">${esc(s)} $</option>`).join('');
   $('fStake').value = stakes.includes(cur) ? cur : '';
   renderStatus();
-  $('wipe').addEventListener('click', wipe);
   render();
 }
 
@@ -226,12 +226,14 @@ async function addFiles(files) {
   refresh();
 }
 
-async function wipe() {
-  if (!confirm('Ștergi toate mâinile păstrate în acest browser?')) return;
-  await state.store.clear();
-  Object.assign(state, { hands: [], seen: new Set(), rejected: [], unknown: {}, last: null });
-  $('status').classList.add('hidden');
-  render();
+// Tipărește raportul: în dialog se alege „Salvează ca PDF”. Titlul paginii devine numele implicit al fișierului.
+function savePdf() {
+  const old = document.title, d = new Date(), pad = (x) => String(x).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  document.title = `Analiza-poker-${state.hands.length}-maini-${stamp}`;
+  const restore = () => { document.title = old; window.removeEventListener('afterprint', restore); };
+  window.addEventListener('afterprint', restore);
+  window.print();
 }
 
 function initUi() {
@@ -245,13 +247,9 @@ function initUi() {
   for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).addEventListener('change', render);
   $('reset').addEventListener('click', () => { for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).value = ''; render(); });
   $('ref').innerHTML = Object.values(REFERENCE).filter((r) => r.eticheta).map((r) => `<li>${esc(r.eticheta)}: ${r.min}–${r.max}%</li>`).join('');
-  // la deschidere: mâinile păstrate din vizitele anterioare intră direct în raport
+  $('savePdf').addEventListener('click', savePdf);
   state.ready = (async () => {
-    let idb = null;
-    try { idb = globalThis.indexedDB ?? null; } catch { /* acces blocat */ }
-    state.store = await openBrowserStore(idb);
-    const saved = await state.store.all();
-    if (saved.length) { $('busy').textContent = 'Se încarcă mâinile păstrate…'; ingest(saved); $('busy').textContent = ''; refresh(); }
+    state.store = await createHandStore(idsOnlyBackend());
     document.body.dataset.ready = '1';
   })();
 }

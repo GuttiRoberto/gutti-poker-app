@@ -38,8 +38,9 @@ function assignPositions(players, buttonSeat, sbName, bbName) {
 
 function parseOne(text) {
   const lines = text.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l !== '');
-  const head = /^Poker Hand #(\S+): (.+?) \(\$([\d.,]+)\/\$([\d.,]+)\) - (\d{4})\/(\d\d)\/(\d\d) (\d\d:\d\d:\d\d)/.exec(lines[0]);
-  if (!head) return { error: 'antet necunoscut', id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?' };
+  // antet tolerant: după blinduri pot urma alte detalii în paranteză (ante, straddle), iar semnul $ poate lipsi
+  const head = /^Poker Hand #(\S+?): (.+?) \(\$?([\d.,]+)\/\$?([\d.,]+)[^)]*\)[^0-9]*(\d{4})[/-](\d\d)[/-](\d\d)[ T](\d\d:\d\d:\d\d)/.exec(lines[0]);
+  if (!head) return { error: 'antet necunoscut', id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?', sample: lines[0].slice(0, 160) };
   const h = {
     id: head[1], game: head[2], sb: cents(head[3]), bb: cents(head[4]),
     stakes: `${head[3]}/${head[4]}`, date: `${head[5]}-${head[6]}-${head[7]}T${head[8]}`,
@@ -136,6 +137,12 @@ function parseOne(text) {
       const rest = line.slice(name.length + 2);
       const allin = / and is all-in$/.test(rest);
       const base = { street, player: name, potBefore: pot, toCall: Math.max(0, current - (commit[name] ?? 0)), allin };
+      if ((m = /^straddle \$([\d.,]+)/.exec(rest))) { // straddle: ca blind postat, mărește suma de egalat
+        const v = cents(m[1]);
+        put(name, v); current = Math.max(current, commit[name]);
+        h.streets.preflop.push({ ...base, type: 'post', what: 'straddle', amount: v, to: commit[name] });
+        continue;
+      }
       if ((m = /^posts (small blind|big blind|.+?) \$([\d.,]+)/.exec(rest))) {
         const v = cents(m[2]);
         if (m[1] === 'small blind') sbName = name; else if (m[1] === 'big blind') bbName = name;
@@ -202,7 +209,7 @@ export function parseHands(text, seen = new Set()) {
     out.total++;
     let r;
     try { r = parseOne(part); } catch (e) { r = { error: `eroare de citire: ${e.message}`, id: (/#(\S+?):/.exec(part) ?? [])[1] ?? '?' }; }
-    if (r.error) { out.rejected.push({ id: r.id, reason: r.error }); continue; }
+    if (r.error) { out.rejected.push({ id: r.id, reason: r.error, ...(r.sample ? { sample: r.sample } : {}) }); continue; }
     if (seen.has(r.hand.id)) { out.duplicates++; continue; }
     seen.add(r.hand.id);
     for (const s of r.shapes) out.unknownLines[s] = (out.unknownLines[s] ?? 0) + 1;

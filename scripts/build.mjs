@@ -24,7 +24,7 @@ ${src('page.css')}</style>
 <body>
 <main>
   <h1>Analizor de leak-uri postflop</h1>
-  <p class="sub">Mâini de cash de pe GG Poker (Hold'em No Limit). Totul se prelucrează local, în acest browser; fișierele nu sunt trimise nicăieri.</p>
+  <p class="sub">Mâini de cash de pe GG Poker (Hold'em No Limit). Totul se prelucrează local, în acest browser; fișierele nu sunt trimise nicăieri și nimic nu se păstrează: la reîncărcarea paginii dispare tot.</p>
   <div id="drop" role="button" tabindex="0" aria-label="Alege fișiere cu mâini">
     <strong>Trage aici fișierele .txt sau .zip</strong>
     <span class="sub">mai multe deodată · hand history de pe GG Poker</span>
@@ -34,7 +34,8 @@ ${src('page.css')}</style>
   <input id="file" type="file" accept=".txt,.zip" multiple class="hidden">
   <section id="status" class="hidden"></section>
   <div id="report" class="hidden">
-    <section>
+    <div class="actions noprint"><button id="savePdf" type="button" class="primary">Salvează PDF</button><span class="sub">se deschide dialogul de tipărire: alege „Salvează ca PDF”</span></div>
+    <section class="noprint">
       <h2>Filtre</h2>
       <div class="filters">
         <label>Miză<select id="fStake"><option value="">toate mizele</option></select></label>

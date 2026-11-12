@@ -201,3 +201,57 @@ test('zip: arhivă „stored” construită în test', async () => {
   const zip = new Uint8Array([...local, ...cd, ...end]);
   assert.deepEqual(await readZipTexts(zip.buffer), [{ name: 'a/b.txt', text: 'Poker Hand #X' }]);
 });
+
+// mână construită de test: nouă blinduri + straddle de la UTG, toți dau fold la straddle
+const STRADDLE_HAND = `Poker Hand #RCTEST1: Hold'em No Limit ($0.01/$0.02) - 2026/09/05 15:49:48
+Table 'RushAndCash1' 6-max Seat #1 is the button
+Seat 1: 554a4f14 ($2.11 in chips)
+Seat 2: 3f02542d ($5.71 in chips)
+Seat 3: bcdbc542 ($2.07 in chips)
+Seat 4: 9cca95e1 ($2 in chips)
+Seat 5: 3d44ea74 ($2.15 in chips)
+Seat 6: Hero ($11.15 in chips)
+3f02542d: posts small blind $0.01
+bcdbc542: posts big blind $0.02
+9cca95e1: straddle $0.04
+*** HOLE CARDS ***
+Dealt to 554a4f14 
+Dealt to 3f02542d 
+Dealt to bcdbc542 
+Dealt to 9cca95e1 
+Dealt to 3d44ea74 
+Dealt to Hero [9s Qh]
+3d44ea74: folds
+Hero: folds
+554a4f14: folds
+3f02542d: folds
+bcdbc542: folds
+Uncalled bet ($0.02) returned to 9cca95e1
+*** SHOWDOWN ***
+9cca95e1 collected $0.05 from pot
+*** SUMMARY ***
+Total pot $0.05 | Rake $0 | Jackpot $0 | Bingo $0 | Fortune $0 | Tax $0
+Seat 1: 554a4f14 (button) folded before Flop (didn't bet)
+Seat 6: Hero folded before Flop (didn't bet)
+`;
+
+test('straddle: linia „straddle $N” se citește, potul se verifică, nu mai rămân linii necunoscute', () => {
+  const r = parseHands(STRADDLE_HAND);
+  assert.deepEqual(r.rejected, []);
+  assert.deepEqual(r.unknownLines, {});
+  assert.equal(r.hands.length, 1);
+  assert.equal(r.hands[0].heroNet, 0);
+  // straddle și all-in
+  const allin = STRADDLE_HAND.replace('9cca95e1: straddle $0.04', '9cca95e1: straddle $0.04 and is all-in');
+  assert.equal(parseHands(allin).hands.length, 1);
+});
+
+test('antet: detaliile suplimentare din paranteză sunt acceptate, iar un antet necunoscut este raportat cu eșantion', () => {
+  const ante = STRADDLE_HAND.replace('($0.01/$0.02)', '($0.01/$0.02 ante $0.00)');
+  assert.equal(parseHands(ante).hands.length, 1);
+  const weird = STRADDLE_HAND.replace("Hold'em No Limit ($0.01/$0.02) - 2026/09/05 15:49:48", 'ceva complet diferit');
+  const r = parseHands(weird);
+  assert.equal(r.hands.length, 0);
+  assert.equal(r.rejected[0].reason, 'antet necunoscut');
+  assert.match(r.rejected[0].sample, /^Poker Hand #RCTEST1: ceva complet diferit/);
+});

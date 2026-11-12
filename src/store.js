@@ -1,5 +1,5 @@
-// Păstrarea mâinilor în browser. Se salvează textul brut al fiecărei mâini, cu ID-ul ei drept cheie;
-// la fiecare vizită textul se trece din nou prin parser. Dublurile se ignoră după ID.
+// Mâinile încărcate trăiesc doar în memoria paginii: nimic nu se salvează în browser.
+// La reîncărcarea paginii totul dispare; fișierele rămân numai pe calculatorul tău. Dublurile se ignoră după ID.
 
 // Împarte un text în mâini brute: { records: [{ id, text }], stray: bucăți care nu sunt mâini }.
 export function splitRawHands(text) {
@@ -14,7 +14,7 @@ export function splitRawHands(text) {
   return { records, stray };
 }
 
-// Depozit în memorie: pentru teste și ca rezervă când IndexedDB nu este disponibil.
+// Depozit în memorie (singurul folosit de pagină).
 export function memoryBackend() {
   const map = new Map();
   return {
@@ -25,32 +25,9 @@ export function memoryBackend() {
   };
 }
 
-// Depozit IndexedDB: o singură colecție, cu ID-ul mâinii drept cheie.
-export function idbBackend(idb, name = 'gutti-analizor') {
-  const STORE = 'maini';
-  const open = () => new Promise((resolve, reject) => {
-    const req = idb.open(name, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  const run = async (mode, work) => {
-    const db = await open();
-    try {
-      return await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, mode);
-        const result = work(tx.objectStore(STORE));
-        tx.oncomplete = () => resolve(result?.result);
-        tx.onerror = tx.onabort = () => reject(tx.error);
-      });
-    } finally { db.close(); }
-  };
-  return {
-    persistent: true,
-    all: () => run('readonly', (s) => s.getAll()),
-    putMany: (records) => run('readwrite', (s) => { for (const r of records) s.put(r); }),
-    clear: () => run('readwrite', (s) => s.clear()),
-  };
+// Depozit care nu păstrează textul: pagina ține în memorie doar mâinile deja citite, iar aici rămân numai ID-urile (pentru dubluri).
+export function idsOnlyBackend() {
+  return { persistent: false, async all() { return []; }, async putMany() {}, async clear() {} };
 }
 
 // Logica de dubluri, independentă de depozit.
@@ -73,10 +50,4 @@ export async function createHandStore(backend) {
     },
     async clear() { await backend.clear(); ids.clear(); },
   };
-}
-
-// Deschide depozitul din browser; dacă IndexedDB lipsește sau este blocat, lucrează doar în memorie.
-export async function openBrowserStore(idb) {
-  if (idb) { try { return await createHandStore(idbBackend(idb)); } catch { /* blocat: continuă în memorie */ } }
-  return createHandStore(memoryBackend());
 }

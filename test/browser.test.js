@@ -1,4 +1,4 @@
-// Test al paginii reale în Chromium: încărcare (buton, drag & drop, zip), duplicate, persistență în IndexedDB, „șterge tot”.
+// Test al paginii reale în Chromium: încărcare (buton, drag & drop, zip), duplicate, nicio păstrare între vizite, buton PDF.
 // Rulează doar dacă Playwright este instalat; altfel este sărit.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,7 +24,7 @@ function zipOf(name, data) {
   return Buffer.concat([local, data, cd, end]);
 }
 
-test('pagina: încărcare, duplicate, persistență și ștergere', { skip: chromium ? false : 'Playwright nu este instalat' }, async () => {
+test('pagina: încărcare, duplicate, fără păstrare între vizite', { skip: chromium ? false : 'Playwright nu este instalat' }, async () => {
   execFileSync(process.execPath, ['scripts/build.mjs'], { cwd: root });
   const browser = await chromium.launch();
   try {
@@ -63,19 +63,20 @@ test('pagina: încărcare, duplicate, persistență și ștergere', { skip: chro
     assert.deepEqual([await kpi('kHands'), await kpi('kNew')], ['20', '0']);
     const netBefore = await page.innerText('#sections section .kpi b');
 
-    // 4. persistență: după reîncărcarea paginii mâinile și raportul sunt la loc, fără alt pas
-    await open();
-    await loaded(20);
-    assert.equal(await page.innerText('#sections section .kpi b'), netBefore);
-    assert.equal(await page.evaluate(() => new Promise((res) => { const r = indexedDB.open('gutti-analizor'); r.onsuccess = () => { const q = r.result.transaction('maini').objectStore('maini').count(); q.onsuccess = () => res(q.result); }; })), 20);
-
-    // 5. „șterge tot”, apoi încă o vizită: nu mai e nimic
-    page.once('dialog', (d) => d.accept());
-    await page.click('#wipe');
-    await page.waitForFunction(() => document.getElementById('report').classList.contains('hidden'));
+    // 4. nimic nu se păstrează: după reîncărcare pagina este goală, iar în browser nu există nicio bază de date
+    assert.equal(await page.locator('#wipe').count(), 0);
+    assert.ok(await page.isVisible('#savePdf'));
+    await page.emulateMedia({ media: 'print' }); // la tipărire dispar zona de încărcare și filtrele, rămâne raportul
+    assert.equal(await page.isVisible('#drop'), false);
+    assert.equal(await page.isVisible('#savePdf'), false);
+    assert.ok(await page.isVisible('#sections section'));
+    await page.emulateMedia({ media: 'screen' });
+    assert.equal(netBefore.length > 0, true);
     await open();
     assert.equal(await page.isVisible('#report'), false);
     assert.equal(await page.isVisible('#status'), false);
+    assert.deepEqual(await page.evaluate(async () => (await indexedDB.databases?.())?.map((d) => d.name) ?? []), []);
+    assert.equal(await page.evaluate(() => localStorage.length), 0);
 
     // totul local: singura cerere de rețea este pagina însăși
     assert.deepEqual([...new Set(requests)], [url]);

@@ -66,12 +66,27 @@ ul.plain { margin: 6px 0 0; padding-left: 18px; }
 .hidden { display: none; }
 footer { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
 @media (max-width: 560px) { section { padding: 14px 12px; } h1 { font-size: 1.35rem; } }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+@media print {
+  :root { --bg: #fff; --card: #fff; --ink: #111; --muted: #4a5358; --line: #cfd5d3; --accent: #0f6b5c; --accent-soft: #e2f1ed; --good: #1a7a43; --bad: #b3261e; --warn: #8a5a00; --warn-soft: #fbf0d6; --good-soft: #e3f3e8; --s: #1b2124; --h: #c0271f; --d: #1c5fb8; --c: #1a7a43; }
+  @page { margin: 12mm; }
+  body { background: #fff; font-size: 10.5pt; }
+  main { max-width: none; padding: 0; }
+  #drop, #file, .noprint { display: none !important; }
+  section { border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 10px 0 0; margin-top: 14px; }
+  h2, h3 { break-after: avoid; }
+  tr, .kpi, .street, details { break-inside: avoid; }
+  thead { display: table-header-group; }
+  .scroll { overflow: visible; margin: 0; padding: 0; }
+  .note { border: 1px solid var(--line); }
+}
 </style>
 </head>
 <body>
 <main>
   <h1>Analizor de leak-uri postflop</h1>
-  <p class="sub">Mâini de cash de pe GG Poker (Hold'em No Limit). Totul se prelucrează local, în acest browser; fișierele nu sunt trimise nicăieri.</p>
+  <p class="sub">Mâini de cash de pe GG Poker (Hold'em No Limit). Totul se prelucrează local, în acest browser; fișierele nu sunt trimise nicăieri și nimic nu se păstrează: la reîncărcarea paginii dispare tot.</p>
   <div id="drop" role="button" tabindex="0" aria-label="Alege fișiere cu mâini">
     <strong>Trage aici fișierele .txt sau .zip</strong>
     <span class="sub">mai multe deodată · hand history de pe GG Poker</span>
@@ -81,7 +96,8 @@ footer { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
   <input id="file" type="file" accept=".txt,.zip" multiple class="hidden">
   <section id="status" class="hidden"></section>
   <div id="report" class="hidden">
-    <section>
+    <div class="actions noprint"><button id="savePdf" type="button" class="primary">Salvează PDF</button><span class="sub">se deschide dialogul de tipărire: alege „Salvează ca PDF”</span></div>
+    <section class="noprint">
       <h2>Filtre</h2>
       <div class="filters">
         <label>Miză<select id="fStake"><option value="">toate mizele</option></select></label>
@@ -142,8 +158,9 @@ function assignPositions(players, buttonSeat, sbName, bbName) {
 
 function parseOne(text) {
   const lines = text.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l !== '');
-  const head = /^Poker Hand #(\S+): (.+?) \(\$([\d.,]+)\/\$([\d.,]+)\) - (\d{4})\/(\d\d)\/(\d\d) (\d\d:\d\d:\d\d)/.exec(lines[0]);
-  if (!head) return { error: 'antet necunoscut', id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?' };
+  // antet tolerant: după blinduri pot urma alte detalii în paranteză (ante, straddle), iar semnul $ poate lipsi
+  const head = /^Poker Hand #(\S+?): (.+?) \(\$?([\d.,]+)\/\$?([\d.,]+)[^)]*\)[^0-9]*(\d{4})[/-](\d\d)[/-](\d\d)[ T](\d\d:\d\d:\d\d)/.exec(lines[0]);
+  if (!head) return { error: 'antet necunoscut', id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?', sample: lines[0].slice(0, 160) };
   const h = {
     id: head[1], game: head[2], sb: cents(head[3]), bb: cents(head[4]),
     stakes: `${head[3]}/${head[4]}`, date: `${head[5]}-${head[6]}-${head[7]}T${head[8]}`,
@@ -240,6 +257,12 @@ function parseOne(text) {
       const rest = line.slice(name.length + 2);
       const allin = / and is all-in$/.test(rest);
       const base = { street, player: name, potBefore: pot, toCall: Math.max(0, current - (commit[name] ?? 0)), allin };
+      if ((m = /^straddle \$([\d.,]+)/.exec(rest))) { // straddle: ca blind postat, mărește suma de egalat
+        const v = cents(m[1]);
+        put(name, v); current = Math.max(current, commit[name]);
+        h.streets.preflop.push({ ...base, type: 'post', what: 'straddle', amount: v, to: commit[name] });
+        continue;
+      }
       if ((m = /^posts (small blind|big blind|.+?) \$([\d.,]+)/.exec(rest))) {
         const v = cents(m[2]);
         if (m[1] === 'small blind') sbName = name; else if (m[1] === 'big blind') bbName = name;
@@ -306,7 +329,7 @@ function parseHands(text, seen = new Set()) {
     out.total++;
     let r;
     try { r = parseOne(part); } catch (e) { r = { error: `eroare de citire: ${e.message}`, id: (/#(\S+?):/.exec(part) ?? [])[1] ?? '?' }; }
-    if (r.error) { out.rejected.push({ id: r.id, reason: r.error }); continue; }
+    if (r.error) { out.rejected.push({ id: r.id, reason: r.error, ...(r.sample ? { sample: r.sample } : {}) }); continue; }
     if (seen.has(r.hand.id)) { out.duplicates++; continue; }
     seen.add(r.hand.id);
     for (const s of r.shapes) out.unknownLines[s] = (out.unknownLines[s] ?? 0) + 1;
@@ -680,8 +703,8 @@ async function readZipTexts(buffer) {
 }
 
 // ---- store.js
-// Păstrarea mâinilor în browser. Se salvează textul brut al fiecărei mâini, cu ID-ul ei drept cheie;
-// la fiecare vizită textul se trece din nou prin parser. Dublurile se ignoră după ID.
+// Mâinile încărcate trăiesc doar în memoria paginii: nimic nu se salvează în browser.
+// La reîncărcarea paginii totul dispare; fișierele rămân numai pe calculatorul tău. Dublurile se ignoră după ID.
 
 // Împarte un text în mâini brute: { records: [{ id, text }], stray: bucăți care nu sunt mâini }.
 function splitRawHands(text) {
@@ -696,7 +719,7 @@ function splitRawHands(text) {
   return { records, stray };
 }
 
-// Depozit în memorie: pentru teste și ca rezervă când IndexedDB nu este disponibil.
+// Depozit în memorie (singurul folosit de pagină).
 function memoryBackend() {
   const map = new Map();
   return {
@@ -707,32 +730,9 @@ function memoryBackend() {
   };
 }
 
-// Depozit IndexedDB: o singură colecție, cu ID-ul mâinii drept cheie.
-function idbBackend(idb, name = 'gutti-analizor') {
-  const STORE = 'maini';
-  const open = () => new Promise((resolve, reject) => {
-    const req = idb.open(name, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  const run = async (mode, work) => {
-    const db = await open();
-    try {
-      return await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, mode);
-        const result = work(tx.objectStore(STORE));
-        tx.oncomplete = () => resolve(result?.result);
-        tx.onerror = tx.onabort = () => reject(tx.error);
-      });
-    } finally { db.close(); }
-  };
-  return {
-    persistent: true,
-    all: () => run('readonly', (s) => s.getAll()),
-    putMany: (records) => run('readwrite', (s) => { for (const r of records) s.put(r); }),
-    clear: () => run('readwrite', (s) => s.clear()),
-  };
+// Depozit care nu păstrează textul: pagina ține în memorie doar mâinile deja citite, iar aici rămân numai ID-urile (pentru dubluri).
+function idsOnlyBackend() {
+  return { persistent: false, async all() { return []; }, async putMany() {}, async clear() {} };
 }
 
 // Logica de dubluri, independentă de depozit.
@@ -755,12 +755,6 @@ async function createHandStore(backend) {
     },
     async clear() { await backend.clear(); ids.clear(); },
   };
-}
-
-// Deschide depozitul din browser; dacă IndexedDB lipsește sau este blocat, lucrează doar în memorie.
-async function openBrowserStore(idb) {
-  if (idb) { try { return await createHandStore(idbBackend(idb)); } catch { /* blocat: continuă în memorie */ } }
-  return createHandStore(memoryBackend());
 }
 
 // ---- ui.js
@@ -826,11 +820,12 @@ function renderStatus() {
     <div class="kpi"><b id="kDup">${L ? L.duplicates.toLocaleString('ro-RO') : '–'}</b><span>duplicate ignorate (același ID)</span></div>
     <div class="kpi"><b>${state.rejected.length}</b><span>mâini respinse</span></div>
     <div class="kpi"><b>${unknown.reduce((s, u) => s + u[1], 0)}</b><span>linii necunoscute</span></div></div>
-    <p class="sub" style="margin-top:10px">${state.store?.persistent
-    ? 'Mâinile sunt păstrate în acest browser, pe acest dispozitiv. La următoarea vizită adaugi doar fișierele noi.'
-    : 'Acest browser nu permite păstrarea mâinilor; ele rămân doar până închizi pagina.'}
-    <button id="wipe" type="button" style="margin-left:8px">Șterge tot</button></p>`;
+    <p class="sub" style="margin-top:10px">Nimic nu se păstrează: mâinile există doar cât timp pagina este deschisă. La reîncărcare dispare tot, iar fișierele rămân doar pe calculatorul tău. Salvează raportul cu „Salvează PDF”.</p>`;
+  const headShapes = {};
+  for (const r of state.rejected) if (r.sample && r.reason.startsWith('antet')) { const k = r.sample.replace(/#\S+?:/, '#ID:').replace(/[0-9]/g, 'N').slice(0, 110); headShapes[k] = (headShapes[k] ?? 0) + 1; }
+  const headList = Object.entries(headShapes).sort((a, b) => b[1] - a[1]).slice(0, 5);
   if (state.rejected.length) html += `<div class="note"><b>Mâini respinse:</b><ul class="plain">${Object.entries(reasons).map(([k, v]) => `<li>${esc(k)}: ${v}</li>`).join('')}</ul>
+    ${headList.length ? `<p class="sub" style="margin:8px 0 0">Forme de antet necunoscute:</p><ul class="plain">${headList.map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul>` : ''}
     <details><summary>Lista (${state.rejected.length})</summary><ul class="plain">${state.rejected.slice(0, 200).map((r) => `<li>${esc(r.id)} — ${esc(r.reason)}</li>`).join('')}</ul></details></div>`;
   if (unknown.length) html += `<div class="note"><b>Linii care nu se potrivesc cu nimic cunoscut</b> (mâinile respective au fost păstrate dacă potul se verifică):<ul class="plain">${unknown.slice(0, 30).map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul></div>`;
   const tb = state.hands.filter((h) => h.timeBank).reduce((s, h) => s + h.timeBank, 0), tbN = state.hands.filter((h) => h.timeBank).length;
@@ -964,7 +959,6 @@ function refresh() {
   $('fStake').innerHTML = '<option value="">toate mizele</option>' + stakes.map((s) => `<option value="${esc(s)}">${esc(s)} $</option>`).join('');
   $('fStake').value = stakes.includes(cur) ? cur : '';
   renderStatus();
-  $('wipe').addEventListener('click', wipe);
   render();
 }
 
@@ -992,12 +986,14 @@ async function addFiles(files) {
   refresh();
 }
 
-async function wipe() {
-  if (!confirm('Ștergi toate mâinile păstrate în acest browser?')) return;
-  await state.store.clear();
-  Object.assign(state, { hands: [], seen: new Set(), rejected: [], unknown: {}, last: null });
-  $('status').classList.add('hidden');
-  render();
+// Tipărește raportul: în dialog se alege „Salvează ca PDF”. Titlul paginii devine numele implicit al fișierului.
+function savePdf() {
+  const old = document.title, d = new Date(), pad = (x) => String(x).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  document.title = `Analiza-poker-${state.hands.length}-maini-${stamp}`;
+  const restore = () => { document.title = old; window.removeEventListener('afterprint', restore); };
+  window.addEventListener('afterprint', restore);
+  window.print();
 }
 
 function initUi() {
@@ -1011,13 +1007,9 @@ function initUi() {
   for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).addEventListener('change', render);
   $('reset').addEventListener('click', () => { for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).value = ''; render(); });
   $('ref').innerHTML = Object.values(REFERENCE).filter((r) => r.eticheta).map((r) => `<li>${esc(r.eticheta)}: ${r.min}–${r.max}%</li>`).join('');
-  // la deschidere: mâinile păstrate din vizitele anterioare intră direct în raport
+  $('savePdf').addEventListener('click', savePdf);
   state.ready = (async () => {
-    let idb = null;
-    try { idb = globalThis.indexedDB ?? null; } catch { /* acces blocat */ }
-    state.store = await openBrowserStore(idb);
-    const saved = await state.store.all();
-    if (saved.length) { $('busy').textContent = 'Se încarcă mâinile păstrate…'; ingest(saved); $('busy').textContent = ''; refresh(); }
+    state.store = await createHandStore(idsOnlyBackend());
     document.body.dataset.ready = '1';
   })();
 }

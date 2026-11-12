@@ -59,3 +59,18 @@ ul.plain { margin: 6px 0 0; padding-left: 18px; }
 .hidden { display: none; }
 footer { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
 @media (max-width: 560px) { section { padding: 14px 12px; } h1 { font-size: 1.35rem; } }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+@media print {
+  :root { --bg: #fff; --card: #fff; --ink: #111; --muted: #4a5358; --line: #cfd5d3; --accent: #0f6b5c; --accent-soft: #e2f1ed; --good: #1a7a43; --bad: #b3261e; --warn: #8a5a00; --warn-soft: #fbf0d6; --good-soft: #e3f3e8; --s: #1b2124; --h: #c0271f; --d: #1c5fb8; --c: #1a7a43; }
+  @page { margin: 12mm; }
+  body { background: #fff; font-size: 10.5pt; }
+  main { max-width: none; padding: 0; }
+  #drop, #file, .noprint { display: none !important; }
+  section { border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 10px 0 0; margin-top: 14px; }
+  h2, h3 { break-after: avoid; }
+  tr, .kpi, .street, details { break-inside: avoid; }
+  thead { display: table-header-group; }
+  .scroll { overflow: visible; margin: 0; padding: 0; }
+  .note { border: 1px solid var(--line); }
+}

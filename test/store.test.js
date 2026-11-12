@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseHands } from '../src/hands.js';
-import { splitRawHands, memoryBackend, createHandStore, openBrowserStore } from '../src/store.js';
+import { splitRawHands, memoryBackend, idsOnlyBackend, createHandStore } from '../src/store.js';
 
 const text = readFileSync(new URL('./fixtures/hands.txt', import.meta.url), 'utf8');
 
@@ -63,10 +63,14 @@ test('„șterge tot” golește depozitul, iar mâinile pot fi încărcate din 
   assert.equal((await store.add(records)).added.length, 20);
 });
 
-test('fără IndexedDB pagina lucrează în memorie; o scriere eșuată nu marchează mâinile ca păstrate', async () => {
-  const store = await openBrowserStore(null);
+test('pagina nu păstrează textul: depozitul „doar ID-uri” ține minte dublurile, dar nu și mâinile', async () => {
+  const store = await createHandStore(idsOnlyBackend());
   assert.equal(store.persistent, false);
-  assert.equal((await store.add(splitRawHands(text).records)).added.length, 20);
+  const { records } = splitRawHands(text);
+  assert.equal((await store.add(records)).added.length, 20);
+  assert.deepEqual(await store.all(), []); // textul brut nu rămâne nicăieri
+  const again = await store.add(records);
+  assert.deepEqual([again.added.length, again.duplicates], [0, 20]);
 
   const broken = { persistent: true, all: async () => [], putMany: async () => { throw new Error('disc plin'); }, clear: async () => {} };
   const s2 = await createHandStore(broken);
