@@ -82,6 +82,8 @@ test('pagina: încărcare, duplicate, fără păstrare între vizite', { skip: c
     await page.selectOption('#rvResp', '');
     assert.match(await page.innerText('#rvCount'), /\d/);
 
+    assert.match(await page.innerText('#sections'), /3b\. Turn și river[\s\S]*Bet-uri repetate ca agresor/i);
+
     // 3. același fișier încă o dată: nimic nou
     await page.setInputFiles('#file', [txt('toate.txt', hands)]);
     await page.waitForFunction(() => document.getElementById('kDup')?.textContent.trim() === '20');

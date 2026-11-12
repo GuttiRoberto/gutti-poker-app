@@ -8,7 +8,7 @@ const src = (f) => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8')
 const strip = (code) => code.replace(/^import .*$/gm, '').replace(/^export /gm, '');
 const ranges = compactRanges(JSON.parse(readFileSync(new URL('../data/ranges.json', import.meta.url), 'utf8')));
 const js = [`const REFERENCE = ${JSON.stringify(JSON.parse(src('reference.json')))};`, `const RANGES3 = ${JSON.stringify(ranges)};`,
-  ...['hands.js', 'classify.js', 'stats.js', 'breakdowns.js', 'equity.js', 'allin.js', 'handclass.js', 'threebet.js', 'chart3bet.js', 'review.js', 'graph.js', 'zip.js', 'store.js', 'ui.js'].map((f) => `// ---- ${f}\n${strip(src(f))}`)].join('\n');
+  ...['hands.js', 'classify.js', 'stats.js', 'streets.js', 'breakdowns.js', 'equity.js', 'allin.js', 'handclass.js', 'threebet.js', 'chart3bet.js', 'review.js', 'graph.js', 'zip.js', 'store.js', 'ui.js'].map((f) => `// ---- ${f}\n${strip(src(f))}`)].join('\n');
 if (/<\/script/i.test(js)) throw new Error('codul conține </script');
 // modulele sunt lipite într-un singur script: verifică sintaxa (prinde nume declarate de două ori)
 const tmp = join(tmpdir(), `analizor-check-${process.pid}.mjs`);

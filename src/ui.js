@@ -2,6 +2,7 @@
 import { parseHands } from './hands.js';
 import { classify } from './classify.js';
 import { computeStats, describeHand } from './stats.js';
+import { computeTurnRiver } from './streets.js';
 import { readZipTexts } from './zip.js';
 import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
 import { allinEv, summarizeAllin } from './allin.js';
@@ -199,6 +200,20 @@ function render() {
       { label: 'donk bet pe flop (pariază înaintea agresorului)', ...D.donk },
       { label: 'bet pe flop după check-ul agresorului', ...D.stab },
       { label: 'bet pe turn după un flop fără niciun bet', ...D.probe }])}`);
+
+  const TR = computeTurnRiver(hands);
+  const afterTbl = (c, fromTxt, toTxt) => (c.called
+    ? `<p class="sub">${nCell(c.called)} mâini în care Hero a plătit un bet pe ${fromTxt}; ${nCell(c.reached)} au ajuns la o decizie pe ${toTxt}. Net al acestor mâini: ${bbTxt(c.net)} bb.</p>` +
+      table(['Pe ' + toTxt, '#Mâini', '#Net (bb)'], c.outcomes.map((o) => [esc(o.label), `${nCell(o.k)} <span class="ci">(${o.n ? nf((100 * o.k) / o.n, 0) : 0}%)</span>`, bbTxt(o.net)]))
+    : '<p class="few">fără cazuri</p>');
+  const sizeTbl = (rows) => table(['Mărimea bet-ului', '#Mâini', 'Fold', 'Call', 'Raise', '#Net (bb)'],
+    rows.map((r) => (r.n < TR.minN ? [esc(r.label), nCell(r.n), '–', '–', '–', bbTxt(r.net)] : [esc(r.label), nCell(r.n), ...['fold', 'call', 'raise'].map((k) => `${nf((100 * r[k]) / r.n, 0)}%`), bbTxt(r.net)])));
+  sec('3b. Turn și river', 'Ce faci după ce plătești, cum te aperi în funcție de mărimea bet-ului și cât de des continui ca agresor. Rândurile cu sub ' + TR.minN + ' mâini nu arată procente.',
+    `<h3>După ce plătești flopul</h3>${afterTbl(TR.afterCall.flopToTurn, 'flop', 'turn')}
+     <h3>După ce plătești turnul</h3>${afterTbl(TR.afterCall.turnToRiver, 'turn', 'river')}
+     <h3>Apărare pe turn, după mărimea bet-ului</h3>${sizeTbl(TR.bySize.turn)}
+     <h3>Apărare pe river, după mărimea bet-ului</h3>${sizeTbl(TR.bySize.river)}
+     <h3>Bet-uri repetate ca agresor</h3>${propRows(TR.barrels)}`);
 
   const W = s.showdown;
   sec('4. Showdown', '', propRows([
