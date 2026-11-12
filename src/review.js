@@ -15,11 +15,14 @@ function facing(h) {
   if (!resp) return null;
   // limp înaintea deschiderii sau call între deschidere și 3-bet: nu mai este „deschidere simplă contra 3-bet” din grafic
   const clean = !acts.slice(0, i0).some((a) => a.type === 'call') && !acts.slice(i0 + 1, j).some((a) => a.type === 'call');
-  return { villainPos: acts[j].pos, response: resp.type, clean };
+  // 3-bet all-in sau call all-in: nu se mai poate da 4-bet, deci call-ul este singura formă de continuare
+  const allin = !!acts[j].allin || (resp.type === 'call' && !!resp.allin);
+  return { villainPos: acts[j].pos, response: resp.type, clean, allin };
 }
 
-export function classifyResponse(chart, response) {
-  const f = chart[response === 'raise' ? 'raise' : response];
+export function classifyResponse(chart, response, allin = false) {
+  // la un 3-bet all-in, „continuă” = call + 4-bet din grafic
+  const f = allin && response === 'call' ? chart.call + chart.raise : chart[response];
   return f >= 20 ? 'în grafic' : f >= 5 ? 'rar în grafic' : 'în afara graficului';
 }
 
@@ -30,8 +33,8 @@ export function computeReview(hands, data) {
     if (!f) continue;
     const label = handLabel(h.heroCards);
     const chart = f.clean ? chartDecision(data, h.heroPos, f.villainPos, label) : null;
-    const cls = !chart ? 'necomparabil' : chart.reach === 0 ? 'deschis în afara graficului' : classifyResponse(chart, f.response);
-    items.push({ h, label, heroPos: h.heroPos, villainPos: f.villainPos, response: f.response, chart, cls, net: h.heroNetBb });
+    const cls = !chart ? 'necomparabil' : chart.reach === 0 ? 'deschis în afara graficului' : classifyResponse(chart, f.response, f.allin);
+    items.push({ h, label, heroPos: h.heroPos, villainPos: f.villainPos, response: f.response, allin: f.allin, chart, cls, net: h.heroNetBb });
   }
   const group = (list) => ({ n: list.length, net: list.reduce((s, x) => s + x.net, 0) });
   const byClass = REVIEW_CLASSES.map((cls) => ({ cls, ...group(items.filter((x) => x.cls === cls)) })).filter((r) => r.n);

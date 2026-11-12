@@ -285,7 +285,7 @@ function drawReview() {
   const shown = list.slice(0, f.limit);
   const row = (x) => {
     const c = x.chart, h = x.h;
-    const chartTxt = !c ? 'fără grafic' : c.reach === 0 ? 'nu era în range-ul de deschidere' : `grafic: fold ${nf(c.fold, 0)}% · call ${nf(c.call, 0)}% · 4-bet ${nf(c.raise, 0)}%`;
+    const chartTxt = !c ? 'fără grafic' : c.reach === 0 ? 'nu era în range-ul de deschidere' : `grafic: fold ${nf(c.fold, 0)}% · call ${nf(c.call, 0)}% · 4-bet ${nf(c.raise, 0)}%${x.allin ? ' · 3-bet all-in: call = continuare (call+4-bet ' + nf(c.call + c.raise, 0) + '%)' : ''}`;
     const tag = x.cls === 'în grafic' ? 'ok' : x.cls === 'necomparabil' ? '' : 'off';
     return `<details><summary><span class="amt ${x.net < 0 ? 'neg' : x.net > 0 ? 'pos' : ''}">${x.net > 0 ? '+' : x.net < 0 ? '−' : ''}${nf(Math.abs(x.net))} bb</span>${cardsHtml(h.heroCards)}<span>${esc(x.label)}</span>
       <span class="sub">${esc(x.heroPos)} contra 3-bet din ${esc(x.villainPos)} · ${esc(RESPONSE_NAMES[x.response])}</span><span class="tag ${tag}">${esc(x.cls)}</span><span class="sub">${chartTxt}</span></summary>

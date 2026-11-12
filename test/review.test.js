@@ -44,6 +44,20 @@ test('clasificare: prag 20% / 5%', () => {
 
 const parse = (text) => { const p = parseHands(text); for (const h of p.hands) h.cls = classify(h); return p.hands; };
 
+test('3-bet all-in: call-ul se compară cu call + 4-bet', () => {
+  const c = { fold: 0, call: 0, raise: 100 };
+  assert.equal(classifyResponse(c, 'call'), 'în afara graficului');
+  assert.equal(classifyResponse(c, 'call', true), 'în grafic');
+  assert.equal(classifyResponse(c, 'fold', true), 'în afara graficului');
+  const base = parse(readFileSync(new URL('./fixtures/threebet-hand.txt', import.meta.url), 'utf8'))[0];
+  const h = structuredClone(base); h.heroCards = ['Kh', 'Kd']; h.heroPos = 'UTG';
+  const pre = h.streets.preflop; const i = pre.findIndex((a) => a.player === 'Hero' && a.type === 'raise');
+  pre.splice(i + 1, pre.length, { player: 'x', pos: 'CO', type: 'raise', amount: 10000, allin: true }, { player: 'Hero', type: 'call', amount: 9000, allin: true });
+  const it = computeReview([h], data).items[0];
+  assert.equal(it.allin, true);
+  assert.equal(it.cls, 'în grafic');
+});
+
 test('mână reală construită: BTN deschide AJo, SB dă 3-bet, Hero dă fold', () => {
   const hands = parse(readFileSync(new URL('./fixtures/threebet-hand.txt', import.meta.url), 'utf8'));
   assert.equal(hands.length, 1);
