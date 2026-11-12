@@ -4,6 +4,7 @@ import { classify } from './classify.js';
 import { computeStats, describeHand } from './stats.js';
 import { readZipTexts } from './zip.js';
 import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
+import { allinEv, summarizeAllin } from './allin.js';
 import { splitRawHands, createHandStore, idsOnlyBackend } from './store.js';
 
 const $ = (id) => document.getElementById(id);
@@ -99,6 +100,29 @@ function render() {
     <p class="note plain">bb se calculează pe fiecare mână, cu big blind-ul acelei mâini, apoi se adună; de aceea totalul în bb nu se transformă în $ cu un singur curs.
     Intervalul de încredere al bb/100 vine din deviația standard reală a mâinilor${B.total.ci.sd100 != null ? ` (${nf(B.total.ci.sd100, 0)} bb la 100 de mâini)` : ''}.
     Rezultatele sunt după rake. Grupele sub ${SMALL_SAMPLE} de mâini sunt marcate „eșantion mic”.</p>`);
+
+  const AI = summarizeAllin(hands);
+  const luckTxt = (x) => bbTxt(x, 0);
+  let aiBody;
+  if (!AI.n) aiBody = AI.pending ? '<p class="few">Se calculează…</p>' : '<p class="few">niciun all-in cu cărți vizibile în această selecție</p>';
+  else {
+    const margin = 1.96 * AI.se;
+    const verdict = AI.n < 30 ? '<p class="note">Prea puține all-in-uri pentru o concluzie.</p>'
+      : AI.luckBb < -margin ? `<p class="note"><b>Ghinion peste variația normală:</b> ai încasat cu ${nf(-AI.luckBb, 0)} bb mai puțin decât îți reveneau după echitate, iar marja obișnuită este de ±${nf(margin, 0)} bb.</p>`
+      : AI.luckBb > margin ? `<p class="note"><b>Noroc peste variația normală:</b> ai încasat cu ${nf(AI.luckBb, 0)} bb mai mult decât îți reveneau după echitate, iar marja obișnuită este de ±${nf(margin, 0)} bb.</p>`
+      : `<p class="note plain">Diferența dintre rezultatul real și cel așteptat (${nf(Math.abs(AI.luckBb), 0)} bb) se încadrează în variația normală (±${nf(margin, 0)} bb), deci nu se poate spune că a fost ghinion sau noroc neobișnuit.</p>`;
+    const skippedTxt = Object.entries(AI.skipped).map(([k, v]) => `${v} × ${esc(k)}`).join(', ');
+    aiBody = `<div class="kpis">
+      <div class="kpi"><b>${AI.n.toLocaleString('ro-RO')}</b><span>all-in-uri cu cărți vizibile, analizate</span></div>
+      <div class="kpi"><b>${bbTxt(AI.net)} bb</b><span>rezultat real (${bbTxt(AI.bb100)} bb/100)</span></div>
+      <div class="kpi"><b>${bbTxt(AI.evNet)} bb</b><span>rezultat cu EV all-in (${bbTxt(AI.evBb100)} bb/100)</span></div>
+      <div class="kpi"><b>${luckTxt(AI.luckBb)} bb</b><span>noroc (real − așteptat), marjă normală ±${nf(margin, 0)} bb</span></div></div>${verdict}
+      <h3>După cât de favorit ai fost</h3>${table(['Situația la all-in', '#All-in-uri', '#Echitate medie', '#Câștigate efectiv', '#Noroc (bb)'],
+        AI.bands.map((b) => [esc(b.label), nCell(b.n), `${nf(b.expectedWin, 0)}%`, `${nf(b.actualWin, 0)}%`, luckTxt(b.luck)]))}
+      <h3>După stradă</h3>${table(['Stradă', '#All-in-uri', '#Noroc (bb)'], AI.streets.map((x) => [x.street, nCell(x.n), luckTxt(x.luck)]))}
+      <p class="sub" style="margin-top:10px">${AI.pending ? `Se mai calculează ${AI.pending.toLocaleString('ro-RO')} mâini… ` : ''}Echitatea se calculează din cărțile arătate la all-in (la preflop prin simulare, cu mică eroare); egalitățile împart potul și rake-ul este scăzut. Nu spune dacă all-in-ul a fost o decizie bună, ci doar cât de mult a contat norocul.${skippedTxt ? ` Sărite: ${skippedTxt}.` : ''}</p>`;
+  }
+  sec('EV all-in: ghinion sau joc prost?', 'Rezultatul real față de cel așteptat din echitate, doar pentru mâinile cu all-in și cărți vizibile.', aiBody);
 
   const P = B.preflop;
   const preRow = (label, r) => [label, nCell(r.n), bbTxt(r.net), r.n ? bbTxt(r.bb100) : '–', r.blinds ? `−${nf(r.blinds)}` : '0', bbTxt(r.netNoBlinds)];
@@ -202,6 +226,26 @@ function refresh() {
   render();
 }
 
+// Calculează EV all-in pentru mâinile nou intrate, fără să blocheze pagina; la final redesenează raportul.
+async function computeEv() {
+  if (state.evRunning) return;
+  state.evRunning = true;
+  try {
+    for (;;) {
+      const todo = state.hands.filter((h) => h.allin === undefined);
+      if (!todo.length) break;
+      let last = performance.now();
+      for (let i = 0; i < todo.length; i++) {
+        todo[i].allin = allinEv(todo[i]);
+        if (performance.now() - last > 60) {
+          $('busy').textContent = `Se calculează EV all-in… ${i.toLocaleString('ro-RO')}/${todo.length.toLocaleString('ro-RO')}`;
+          await new Promise((r) => setTimeout(r)); last = performance.now();
+        }
+      }
+    }
+  } finally { state.evRunning = false; $('busy').textContent = ''; render(); }
+}
+
 async function addFiles(files) {
   if (!files.length) return;
   await state.ready;
@@ -224,6 +268,7 @@ async function addFiles(files) {
   state.last = last;
   $('busy').textContent = '';
   refresh();
+  await computeEv();
 }
 
 // Tipărește raportul: în dialog se alege „Salvează ca PDF”. Titlul paginii devine numele implicit al fișierului.

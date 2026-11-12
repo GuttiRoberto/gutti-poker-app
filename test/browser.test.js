@@ -57,6 +57,13 @@ test('pagina: încărcare, duplicate, fără păstrare între vizite', { skip: c
     await loaded(20);
     assert.deepEqual([await kpi('kNew'), await kpi('kDup')], ['7', '13']);
 
+    // EV all-in: calculul pornește singur după încărcare; în cele 20 de mâini sunt 3 all-in-uri cu cărți vizibile
+    await page.waitForFunction(() => /EV all-in/.test(document.getElementById('sections').innerText) && !/Se calculează…/.test(document.getElementById('sections').innerText));
+    const aiText = await page.innerText('#sections');
+    assert.match(aiText, /EV all-in: ghinion sau joc prost\?/);
+    assert.match(aiText, /3\s+all-in-uri cu cărți vizibile, analizate/);
+    assert.match(aiText, /Prea puține all-in-uri pentru o concluzie/);
+
     // 3. același fișier încă o dată: nimic nou
     await page.setInputFiles('#file', [txt('toate.txt', hands)]);
     await page.waitForFunction(() => document.getElementById('kDup')?.textContent.trim() === '20');
