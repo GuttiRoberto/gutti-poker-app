@@ -6,6 +6,7 @@ import { readZipTexts } from './zip.js';
 import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
 import { allinEv, summarizeAllin } from './allin.js';
 import { computeThreeBet } from './threebet.js';
+import { buildSeries, chartSvg, CHART_GEO } from './graph.js';
 import { splitRawHands, createHandStore, idsOnlyBackend } from './store.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,7 +21,7 @@ const nCell = (n) => `${n.toLocaleString('ro-RO')}${smallTag(n)}`;
 const usdTxt = (x) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 2)} $</span>`;
 const ciTxt = (c) => (c.lo == null ? '–' : `<span class="ci">IC 95%: ${c.lo < 0 ? '−' : '+'}${nf(Math.abs(c.lo))} … ${c.hi < 0 ? '−' : '+'}${nf(Math.abs(c.hi))}</span>`);
 
-const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null };
+const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null, chartUnit: 'bb' };
 
 // Procent cu n și interval de încredere; sub pragul minim nu se colorează și nu se compară cu reperul.
 function pctCell(p, refKey) {
@@ -119,6 +120,10 @@ function render() {
       <div class="kpi"><b>${bbTxt(AI.net)} bb</b><span>rezultat real (${bbTxt(AI.bb100)} bb/100)</span></div>
       <div class="kpi"><b>${bbTxt(AI.evNet)} bb</b><span>rezultat cu EV all-in (${bbTxt(AI.evBb100)} bb/100)</span></div>
       <div class="kpi"><b>${luckTxt(AI.luckBb)} bb</b><span>noroc (real − așteptat), marjă normală ±${nf(margin, 0)} bb</span></div></div>${verdict}
+      <div class="legend"><span><i style="background:var(--good)"></i>Câștig/pierdere</span><span><i style="background:var(--ev)"></i>All-in EV</span>
+        <span class="seg noprint"><button type="button" data-unit="bb" class="${state.chartUnit === 'bb' ? 'on' : ''}">bb</button><button type="button" data-unit="usd" class="${state.chartUnit === 'usd' ? 'on' : ''}">$</button></span></div>
+      <div class="chartbox" id="evChartBox"></div>
+      <p class="sub">Sume cumulate pe toate mâinile din filtru, în ordine cronologică. Linia All-in EV este rezultatul real fără norocul de la all-in-urile cu cărți vizibile.</p>
       <h3>După cât de favorit ai fost (fără river)</h3>${table(['Situația la all-in', '#All-in-uri', '#Echitate medie', '#Câștigate efectiv', '#Noroc (bb)'],
         AI.bands.map((b) => [esc(b.label), nCell(b.n), `${nf(b.expectedWin, 0)}%`, `${nf(b.actualWin, 0)}%`, luckTxt(b.luck)]))}
       <h3>După stradă</h3>${table(['Stradă', '#All-in-uri', '#Noroc (bb)'], AI.streets.map((x) => [x.street, nCell(x.n), luckTxt(x.luck)]))}
@@ -219,6 +224,35 @@ function render() {
     }).join('') || '<p class="few">nicio mână pierdută</p>');
 
   $('sections').innerHTML = out.join('');
+  drawChart(hands);
+  for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => {
+    state.chartUnit = b.dataset.unit;
+    for (const x of document.querySelectorAll('.seg button')) x.classList.toggle('on', x === b);
+    drawChart(filtered());
+  });
+}
+
+// Desenează graficul EV și leagă indicatorul de la mouse/atingere (mâna, All-in EV, câștig).
+function drawChart(hands) {
+  const box = $('evChartBox');
+  if (!box) return;
+  const S = buildSeries(hands, state.chartUnit), unit = state.chartUnit;
+  box.innerHTML = chartSvg(S, unit) + '<div class="tip hidden" id="evTip"></div>';
+  const svg = $('evChart'), cursor = $('evCursor'), tip = $('evTip');
+  const { W, L, R } = CHART_GEO;
+  const fmt = (v) => (unit === 'usd' ? `${v < 0 ? '−' : v > 0 ? '+' : ''}$${nf(Math.abs(v), 2)}` : `${v < 0 ? '−' : v > 0 ? '+' : ''}${nf(Math.abs(v), 1)} bb`);
+  const move = (e) => {
+    const r = svg.getBoundingClientRect(), fx = ((e.clientX - r.left) / r.width) * W;
+    const i = Math.max(0, Math.min(S.n, Math.round(((fx - L) / (W - L - R)) * S.n)));
+    const x = L + (S.n ? i / S.n : 0) * (W - L - R);
+    cursor.setAttribute('x1', x); cursor.setAttribute('x2', x); cursor.setAttribute('visibility', 'visible');
+    tip.innerHTML = `Mâna ${i.toLocaleString('ro-RO')}<br><span style="color:var(--ev)">All-in EV: ${fmt(S.ev[i])}</span><br><span style="color:var(--good)">Câștig/pierdere: ${fmt(S.real[i])}</span>`;
+    tip.classList.remove('hidden');
+    const bx = box.getBoundingClientRect(), left = e.clientX - bx.left + 14;
+    tip.style.left = `${Math.min(left, bx.width - tip.offsetWidth - 4)}px`;
+  };
+  svg.addEventListener('pointermove', move);
+  svg.addEventListener('pointerleave', () => { cursor.setAttribute('visibility', 'hidden'); tip.classList.add('hidden'); });
 }
 
 // Trece prin parser înregistrările brute (noi sau citite din browser) și le adaugă în raport.

@@ -66,6 +66,15 @@ test('pagina: încărcare, duplicate, fără păstrare între vizite', { skip: c
 
     assert.match(aiText.length ? await page.innerText('#sections') : '', /1c\. Poturi 3-bet și 4-bet, ca caller/);
 
+    // grafic: două linii, comutare bb/$ și indicator la mouse
+    assert.equal(await page.locator('#evChart path').count(), 2);
+    await page.click('.seg button[data-unit="usd"]');
+    assert.match(await page.textContent('#evChart'), /\$/);
+    const box = await page.locator('#evChart').boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForSelector('#evTip:not(.hidden)');
+    assert.match(await page.innerText('#evTip'), /All-in EV[\s\S]*Câștig\/pierdere/);
+
     // 3. același fișier încă o dată: nimic nou
     await page.setInputFiles('#file', [txt('toate.txt', hands)]);
     await page.waitForFunction(() => document.getElementById('kDup')?.textContent.trim() === '20');

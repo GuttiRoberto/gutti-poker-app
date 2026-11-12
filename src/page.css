@@ -1,13 +1,13 @@
 :root {
   --bg: #f4f5f3; --card: #ffffff; --ink: #1b2124; --muted: #5d676c; --line: #dfe3e1;
   --accent: #0f6b5c; --accent-soft: #e2f1ed; --good: #1a7a43; --bad: #b3261e; --warn: #8a5a00; --warn-soft: #fbf0d6; --good-soft: #e3f3e8;
-  --s: #1b2124; --h: #c0271f; --d: #1c5fb8; --c: #1a7a43;
+  --s: #1b2124; --h: #c0271f; --d: #1c5fb8; --c: #1a7a43; --ev: #b86e00;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #14181a; --card: #1d2326; --ink: #e8ecea; --muted: #9aa5a9; --line: #2f383c;
     --accent: #5fc7b3; --accent-soft: #1c3a35; --good: #6fd08f; --bad: #ff8a80; --warn: #f0c060; --warn-soft: #3a3118; --good-soft: #1c3526;
-    --s: #e8ecea; --h: #ff8a80; --d: #7fb4ff; --c: #6fd08f;
+    --s: #e8ecea; --h: #ff8a80; --d: #7fb4ff; --c: #6fd08f; --ev: #f0a040;
   }
 }
 * { box-sizing: border-box; }
@@ -62,7 +62,7 @@ footer { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
 @media print {
-  :root { --bg: #fff; --card: #fff; --ink: #111; --muted: #4a5358; --line: #cfd5d3; --accent: #0f6b5c; --accent-soft: #e2f1ed; --good: #1a7a43; --bad: #b3261e; --warn: #8a5a00; --warn-soft: #fbf0d6; --good-soft: #e3f3e8; --s: #1b2124; --h: #c0271f; --d: #1c5fb8; --c: #1a7a43; }
+  :root { --bg: #fff; --card: #fff; --ink: #111; --muted: #4a5358; --line: #cfd5d3; --accent: #0f6b5c; --accent-soft: #e2f1ed; --good: #1a7a43; --bad: #b3261e; --warn: #8a5a00; --warn-soft: #fbf0d6; --good-soft: #e3f3e8; --s: #1b2124; --h: #c0271f; --d: #1c5fb8; --c: #1a7a43; --ev: #b86e00; }
   @page { margin: 12mm; }
   body { background: #fff; font-size: 10.5pt; }
   main { max-width: none; padding: 0; }
@@ -73,4 +73,21 @@ footer { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
   thead { display: table-header-group; }
   .scroll { overflow: visible; margin: 0; padding: 0; }
   .note { border: 1px solid var(--line); }
+  .tip, .seg { display: none !important; }
 }
+
+.chartbox { position: relative; margin-top: 14px; }
+.chart { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.chart text { fill: var(--muted); font-size: 11px; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .zero { stroke: var(--muted); stroke-width: 1; }
+.chart .l-real, .chart .l-ev { fill: none; stroke-width: 1.8; stroke-linejoin: round; }
+.chart .l-real { stroke: var(--good); } .chart .l-ev { stroke: var(--ev); }
+.chart .cursor { stroke: var(--muted); stroke-dasharray: 3 3; }
+.tip { position: absolute; top: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; pointer-events: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin-top: 6px; font-size: 0.88rem; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.seg { display: inline-flex; margin-left: auto; }
+.seg button { border-radius: 0; min-height: 32px; padding: 4px 12px; }
+.seg button:first-child { border-radius: 8px 0 0 8px; } .seg button:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
+.seg button.on { background: var(--accent); color: var(--card); border-color: var(--accent); }
