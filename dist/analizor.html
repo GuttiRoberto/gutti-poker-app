@@ -1435,7 +1435,7 @@ function render() {
   const RV = computeReview(hands, RANGES3);
   state.rv = RV;
   const rvPos = [...new Set(RV.items.map((x) => x.heroPos))];
-  sec('1d. Mâini de revăzut: ai deschis și ai primit 3-bet', 'Răspunsul tău față de graficul din Range.pdf (100 bb). „În grafic” = acțiunea ta apare cu cel puțin 20% în grafic, „rar” = 5–20%, „în afara graficului” = sub 5%. „Necomparabil” = limp înainte, call între deschidere și 3-bet sau poziții fără grafic. Graficul este orientativ.',
+  sec('1d. Mâini de revăzut: ai deschis și ai primit 3-bet', 'Răspunsul tău față de graficul din Range.pdf (100 bb). „În grafic” = acțiunea ta apare cu cel puțin 20% în grafic, „rar” = 5–20%, „în afara graficului” = sub 5%. „Necomparabil” = limp înainte, call între deschidere și 3-bet, stack efectiv în afara 70–150 bb sau poziții fără grafic. Range.pdf este mai vechi decât solverele actuale și nu ține cont de mărimea 3-bet-ului, deci frecvențele mixte pot diferi; ia în serios mai ales abaterile mari (în afara graficului, cu 0%).',
     RV.items.length ? `<h3>Față de grafic</h3>${table(['Răspunsul tău', '#Situații', '#Net (bb)', '#bb/situație'], [...RV.byClass.map((r) => [esc(r.cls), nCell(r.n), bbTxt(r.net), bbTxt(r.net / r.n, 2)]), ['<b>total</b>', nCell(RV.total.n), bbTxt(RV.total.net), bbTxt(RV.total.net / RV.total.n, 2)]])}
       <h3>Ce faci în afara graficului</h3>${table(['Răspuns', '#Comparabile', '#Rar sau în afara graficului', '#Pondere', '#Net acelor situații (bb)'], RV.byResponse.map((r) => [esc(RESPONSE_NAMES[r.response]), nCell(r.n), String(r.off), `${nf((100 * r.off) / r.n, 0)}%`, bbTxt(r.offNet)]))}
       <h3>Lista, de la cel mai mare minus</h3>
