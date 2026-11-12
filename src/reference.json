@@ -1,0 +1,7 @@
+{
+  "nota": "Repere orientative, nu rezultate de solver. Valorile sunt procente (min–max) și pot fi editate liber.",
+  "cbetFlopHU": { "eticheta": "c-bet pe flop, heads-up", "min": 50, "max": 70 },
+  "foldVsCbetFlop": { "eticheta": "fold contra c-bet pe flop", "min": 40, "max": 55 },
+  "wtsd": { "eticheta": "ajunge la showdown după flop", "min": 24, "max": 30 },
+  "wsd": { "eticheta": "câștigă la showdown", "min": 48, "max": 55 }
+}

@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analizor de leak-uri postflop</title>
+<style>
+:root {
+  --bg: #f4f5f3; --card: #ffffff; --ink: #1b2124; --muted: #5d676c; --line: #dfe3e1;
+  --accent: #0f6b5c; --accent-soft: #e2f1ed; --good: #1a7a43; --bad: #b3261e; --warn: #8a5a00; --warn-soft: #fbf0d6; --good-soft: #e3f3e8;
+  --s: #1b2124; --h: #c0271f; --d: #1c5fb8; --c: #1a7a43;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14181a; --card: #1d2326; --ink: #e8ecea; --muted: #9aa5a9; --line: #2f383c;
+    --accent: #5fc7b3; --accent-soft: #1c3a35; --good: #6fd08f; --bad: #ff8a80; --warn: #f0c060; --warn-soft: #3a3118; --good-soft: #1c3526;
+    --s: #e8ecea; --h: #ff8a80; --d: #7fb4ff; --c: #6fd08f;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 64px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; margin: 0 0 4px; }
+h3 { font-size: 0.95rem; margin: 18px 0 6px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+p { margin: 0 0 10px; }
+.sub { color: var(--muted); font-size: 0.92rem; }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-top: 16px; }
+#drop { border: 2px dashed var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 22px 16px; text-align: center; margin-top: 16px; cursor: pointer; }
+#drop.over { outline: 3px solid var(--accent); }
+#drop strong { display: block; font-size: 1.05rem; }
+button, select, input[type=date] { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 40px; }
+button { cursor: pointer; }
+button.primary { background: var(--accent); color: var(--card); border-color: var(--accent); font-weight: 600; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.kpi b { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 0.85rem; }
+.scroll { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 0.8rem; white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.pct { font-weight: 600; }
+.ci { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.few { color: var(--muted); font-style: italic; }
+.tag { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; white-space: nowrap; border: 1px solid var(--line); color: var(--muted); }
+.tag.ok { background: var(--good-soft); color: var(--good); border-color: transparent; }
+.tag.off { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.tag.hu { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.note { background: var(--warn-soft); color: var(--ink); border-radius: 8px; padding: 10px 12px; font-size: 0.92rem; margin: 10px 0 0; }
+.note.plain { background: var(--bg); }
+details { border-top: 1px solid var(--line); padding: 8px 0; }
+details:first-of-type { border-top: 0; }
+summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+summary .amt { font-weight: 700; min-width: 5.5em; font-variant-numeric: tabular-nums; }
+.street { display: grid; grid-template-columns: 5.2em 1fr; gap: 2px 10px; padding: 4px 0 0 4px; font-size: 0.92rem; }
+.street b { color: var(--muted); font-weight: 600; }
+.cards { font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+.cs { color: var(--s); } .ch { color: var(--h); } .cd { color: var(--d); } .cc { color: var(--c); }
+ul.plain { margin: 6px 0 0; padding-left: 18px; }
+.hidden { display: none; }
+footer { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
+@media (max-width: 560px) { section { padding: 14px 12px; } h1 { font-size: 1.35rem; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Analizor de leak-uri postflop</h1>
+  <p class="sub">Mâini de cash de pe GG Poker (Hold'em No Limit). Totul se prelucrează local, în acest browser; nimic nu se trimite nicăieri.</p>
+  <div id="drop" role="button" tabindex="0" aria-label="Alege fișiere cu mâini">
+    <strong>Trage aici fișierele .txt sau .zip</strong>
+    <span class="sub">sau atinge pentru a le alege · poți adăuga mai multe pe rând</span>
+    <div id="busy" class="sub" aria-live="polite"></div>
+  </div>
+  <input id="file" type="file" accept=".txt,.zip" multiple class="hidden">
+  <section id="status" class="hidden"></section>
+  <div id="report" class="hidden">
+    <section>
+      <h2>Filtre</h2>
+      <div class="filters">
+        <label>Miză<select id="fStake"><option value="">toate mizele</option></select></label>
+        <label>De la<input id="fFrom" type="date"></label>
+        <label>Până la<input id="fTo" type="date"></label>
+        <label>Jucători pe flop<select id="fPlayers"><option value="">toate mâinile</option><option value="hu">doar heads-up</option><option value="mw">doar multiway</option></select></label>
+        <button id="reset" type="button">Resetează</button>
+      </div>
+    </section>
+    <div id="sections"></div>
+    <footer>
+      <p><b>Repere orientative</b> (nu sunt rezultate de solver; se editează în <code>src/reference.json</code>):</p>
+      <ul class="plain" id="ref"></ul>
+      <p>Fiecare procent are numărul de cazuri și intervalul de încredere de 95% (Wilson). Sub 30 de cazuri nu se compară cu niciun reper.</p>
+    </footer>
+  </div>
+</main>
+<script type="module">
+const REFERENCE = {"nota":"Repere orientative, nu rezultate de solver. Valorile sunt procente (min–max) și pot fi editate liber.","cbetFlopHU":{"eticheta":"c-bet pe flop, heads-up","min":50,"max":70},"foldVsCbetFlop":{"eticheta":"fold contra c-bet pe flop","min":40,"max":55},"wtsd":{"eticheta":"ajunge la showdown după flop","min":24,"max":30},"wsd":{"eticheta":"câștigă la showdown","min":48,"max":55}};
+// ---- hands.js
+// Parser pentru hand history GG Poker (cash, Hold'em No Limit). Sumele sunt ținute în cenți (întregi).
+
+const cents = (s) => Math.round(parseFloat(String(s).replace(/,/g, '')) * 100);
+const cardList = (s) => (s.match(/[2-9TJQKA][shdc]/g) ?? []);
+const STREETS = ['preflop', 'flop', 'turn', 'river'];
+const POS_NAMES = { 2: [], 3: [], 4: ['CO'], 5: ['HJ', 'CO'], 6: ['UTG', 'HJ', 'CO'] };
+
+// Forma unei linii necunoscute, fără valorile concrete, pentru numărare.
+function lineShape(line, names) {
+  let s = line;
+  for (const n of names) s = s.split(n).join('P');
+  return s.replace(/\$[\d.,]+/g, '$N').replace(/\[[^\]]*\]/g, '[C]').replace(/\d+/g, 'N').slice(0, 80);
+}
+
+// Poziții: BTN, SB, BB după buton și blinduri; restul UTG/HJ/CO numărate dinspre buton înapoi.
+function assignPositions(players, buttonSeat, sbName, bbName) {
+  const n = players.length;
+  const seats = [...players].sort((a, b) => a.seat - b.seat);
+  let bi = seats.findIndex((p) => p.seat === buttonSeat);
+  if (bi < 0) bi = seats.findIndex((p) => p.name === sbName) - 1; // butonul pe un loc gol
+  const order = seats.map((_, i) => seats[(((bi + i) % n) + n) % n]); // de la buton, în sensul jocului
+  const pos = new Map();
+  if (n === 2) {
+    for (const p of order) pos.set(p.name, p.name === bbName ? 'BB' : 'BTN');
+    return pos;
+  }
+  const rest = order.filter((p) => p.name !== sbName && p.name !== bbName && p.seat !== buttonSeat);
+  const names = POS_NAMES[Math.min(n, 6)] ?? [];
+  for (const p of order) {
+    if (p.name === sbName) pos.set(p.name, 'SB');
+    else if (p.name === bbName) pos.set(p.name, 'BB');
+    else if (p.seat === buttonSeat) pos.set(p.name, 'BTN');
+  }
+  // rest este în ordinea de joc după BB: primul este cel mai devreme
+  rest.forEach((p, i) => pos.set(p.name, names[names.length - rest.length + i] ?? `EP${i + 1}`));
+  return pos;
+}
+
+function parseOne(text) {
+  const lines = text.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l !== '');
+  const head = /^Poker Hand #(\S+): (.+?) \(\$([\d.,]+)\/\$([\d.,]+)\) - (\d{4})\/(\d\d)\/(\d\d) (\d\d:\d\d:\d\d)/.exec(lines[0]);
+  if (!head) return { error: 'antet necunoscut', id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?' };
+  const h = {
+    id: head[1], game: head[2], sb: cents(head[3]), bb: cents(head[4]),
+    stakes: `${head[3]}/${head[4]}`, date: `${head[5]}-${head[6]}-${head[7]}T${head[8]}`,
+    table: null, maxSeats: null, buttonSeat: null, players: [], heroPos: null, heroCards: [],
+    flop: [], board: [], boards: [], runs: 1,
+    streets: { preflop: [], flop: [], turn: [], river: [] },
+    pot: null, rake: 0, fees: {}, cashDrop: 0,
+    invested: {}, returned: {}, collected: {}, shown: {},
+    cashout: { received: 0, risk: 0, chosen: false }, timeBank: 0,
+    unknown: [], checks: {},
+  };
+  if (h.game !== "Hold'em No Limit") return { error: `joc nesuportat: ${h.game}`, id: h.id };
+
+  const byName = new Map();
+  const names = [];
+  let state = 'head', street = 'preflop';
+  let pot = 0, sbName = null, bbName = null;
+  let commit = {}, current = 0;
+  const folded = new Set();
+  const add = (o, k, v) => (o[k] = (o[k] ?? 0) + v);
+  const playerOf = (line) => {
+    for (const n of names) if (line.startsWith(n) && (line[n.length] === ':' || line[n.length] === ' ')) return n;
+    return null;
+  };
+  const put = (name, amount) => { add(h.invested, name, amount); add(commit, name, amount); pot += amount; };
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    let m;
+    if (line.startsWith('*** ')) {
+      if (line === '*** HOLE CARDS ***') { state = 'play'; continue; }
+      if (line === '*** SUMMARY ***') { state = 'summary'; continue; }
+      if (/^\*\*\* (FIRST |SECOND |THIRD )?SHOWDOWN \*\*\*$/.test(line)) { state = 'showdown'; continue; }
+      if ((m = /^\*\*\* (FIRST |SECOND |THIRD )?(FLOP|TURN|RIVER) \*\*\* (.*)$/.exec(line))) {
+        const run = (m[1] ?? '').trim(), st = m[2].toLowerCase(), cards = cardList(m[3]);
+        if (run === '' || run === 'FIRST') {
+          if (st === 'flop') h.flop = cards.slice(0, 3);
+          h.board = cards;
+          if (state === 'play' && STREETS.indexOf(st) > STREETS.indexOf(street)) { street = st; commit = {}; current = 0; }
+        }
+        continue;
+      }
+      h.unknown.push(line); continue;
+    }
+    if (state === 'head') {
+      if ((m = /^Table '([^']*)' (\S+) Seat #(\d+) is the button/.exec(line))) { h.table = m[1]; h.maxSeats = m[2]; h.buttonSeat = +m[3]; continue; }
+      if ((m = /^Seat (\d+): (.+) \(\$([\d.,]+) in chips\)/.exec(line))) {
+        const p = { seat: +m[1], name: m[2], stack: cents(m[3]), pos: null };
+        h.players.push(p); byName.set(p.name, p); names.push(p.name);
+        names.sort((a, b) => b.length - a.length);
+        continue;
+      }
+      if ((m = /^Cash Drop to Pot : total \$([\d.,]+)/.exec(line))) { h.cashDrop += cents(m[1]); pot += cents(m[1]); continue; }
+    }
+    if (state === 'summary') {
+      if ((m = /^Total pot \$([\d.,]+)(.*)$/.exec(line))) {
+        h.pot = cents(m[1]);
+        for (const f of m[2].matchAll(/\| ([A-Za-z ]+?) \$([\d.,]+)/g)) h.fees[f[1]] = cents(f[2]);
+        h.rake = h.fees.Rake ?? 0;
+        continue;
+      }
+      if ((m = /^(FIRST |SECOND |THIRD )?Board \[(.*)\]/.exec(line))) {
+        const cards = cardList(m[2]);
+        h.boards.push(cards);
+        if (!m[1] || m[1] === 'FIRST ') h.board = cards;
+        continue;
+      }
+      if ((m = /^Hand was run (\w+) times/.exec(line))) { h.runs = { two: 2, three: 3, four: 4 }[m[1]] ?? 2; continue; }
+      if ((m = /^Seat (\d+): (.+)$/.exec(line))) {
+        const name = playerOf(m[2]);
+        if (!name) { h.unknown.push(line); continue; }
+        if (name === 'Hero') {
+          const b = /bought time bank card \(\$([\d.,]+)\)/.exec(line), r = /received \(\$([\d.,]+)\) from time bank card/.exec(line);
+          if (b) h.timeBank -= cents(b[1]);
+          if (r) h.timeBank += cents(r[1]);
+        }
+        continue;
+      }
+      h.unknown.push(line); continue;
+    }
+    // state: head (blinduri), play, showdown
+    if ((m = /^Dealt to (.+?)(?: \[(.*)\])?$/.exec(line)) && state === 'play') {
+      if (m[1] === 'Hero' && m[2]) h.heroCards = cardList(m[2]);
+      continue;
+    }
+    if ((m = /^Uncalled bet \(\$([\d.,]+)\) returned to (.+)$/.exec(line))) {
+      const v = cents(m[1]); add(h.returned, m[2], v); pot -= v; continue;
+    }
+    const name = playerOf(line);
+    if (name && line[name.length] === ' ' && (m = /^ collected \$([\d.,]+) from pot/.exec(line.slice(name.length)))) {
+      add(h.collected, name, cents(m[1])); continue;
+    }
+    if (name && line[name.length] === ':') {
+      const rest = line.slice(name.length + 2);
+      const allin = / and is all-in$/.test(rest);
+      const base = { street, player: name, potBefore: pot, toCall: Math.max(0, current - (commit[name] ?? 0)), allin };
+      if ((m = /^posts (small blind|big blind|.+?) \$([\d.,]+)/.exec(rest))) {
+        const v = cents(m[2]);
+        if (m[1] === 'small blind') sbName = name; else if (m[1] === 'big blind') bbName = name;
+        put(name, v);
+        if (m[1] === 'small blind' || m[1] === 'big blind' || /straddle/.test(m[1])) current = Math.max(current, commit[name]);
+        else commit[name] -= v; // ante sau blind mort: nu contează la suma de egalat
+        h.streets.preflop.push({ ...base, type: 'post', what: m[1], amount: v, to: commit[name] });
+        continue;
+      }
+      if (rest === 'folds') { folded.add(name); h.streets[street].push({ ...base, type: 'fold', amount: 0 }); continue; }
+      if (rest === 'checks') { h.streets[street].push({ ...base, type: 'check', amount: 0 }); continue; }
+      if ((m = /^calls \$([\d.,]+)/.exec(rest))) { const v = cents(m[1]); put(name, v); h.streets[street].push({ ...base, type: 'call', amount: v, to: commit[name] }); continue; }
+      if ((m = /^bets \$([\d.,]+)/.exec(rest))) { const v = cents(m[1]); put(name, v); current = commit[name]; h.streets[street].push({ ...base, type: 'bet', amount: v, to: commit[name] }); continue; }
+      if ((m = /^raises \$([\d.,]+) to \$([\d.,]+)/.exec(rest))) {
+        const to = cents(m[2]), v = to - (commit[name] ?? 0);
+        put(name, v); current = to;
+        h.streets[street].push({ ...base, type: 'raise', amount: v, to });
+        continue;
+      }
+      if ((m = /^shows \[(.*?)\]/.exec(rest))) { h.shown[name] = cardList(m[1]); continue; }
+      if (rest === 'Chooses to EV Cashout') { if (name === 'Hero') h.cashout.chosen = true; continue; }
+      if ((m = /^Receives Cashout \(\$([\d.,]+)\)/.exec(rest))) { if (name === 'Hero') h.cashout.received += cents(m[1]); continue; }
+      if ((m = /^Pays Cashout Risk \(\$([\d.,]+)\)/.exec(rest))) { if (name === 'Hero') h.cashout.risk += cents(m[1]); continue; }
+    }
+    h.unknown.push(line);
+  }
+
+  if (!byName.has('Hero')) return { error: 'Hero lipsește', id: h.id };
+  if (h.pot == null) return { error: 'lipsește linia Total pot', id: h.id };
+  const pos = assignPositions(h.players, h.buttonSeat, sbName, bbName);
+  for (const p of h.players) p.pos = pos.get(p.name) ?? null;
+  h.heroPos = pos.get('Hero') ?? null;
+  for (const st of STREETS) for (const a of h.streets[st]) a.pos = pos.get(a.player);
+
+  const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+  const inPot = sum(h.invested) - sum(h.returned) + h.cashDrop;
+  h.checks.potOk = inPot === h.pot;
+  h.checks.potDiff = inPot - h.pot;
+  h.checks.payoutOk = sum(h.collected) + sum(h.fees) === h.pot;
+
+  h.folded = [...folded];
+  const live = h.players.filter((p) => !folded.has(p.name));
+  h.showdown = live.length >= 2;
+  h.heroFolded = folded.has('Hero');
+  h.heroShowdown = h.showdown && !h.heroFolded;
+  h.heroSawFlop = h.flop.length === 3 && !h.streets.preflop.some((a) => a.player === 'Hero' && a.type === 'fold');
+  h.heroCollected = h.collected.Hero ?? 0;
+  h.heroNet = h.heroCollected + h.cashout.received - h.cashout.risk - (h.invested.Hero ?? 0) + (h.returned.Hero ?? 0);
+  h.heroNetBb = h.heroNet / h.bb;
+  return { hand: h, shapes: h.unknown.map((l) => lineShape(l, names)) };
+}
+
+// Întoarce mâinile valide, cele respinse (cu motiv), dublurile eliminate și liniile necunoscute numărate pe formă.
+function parseHands(text, seen = new Set()) {
+  const out = { hands: [], rejected: [], duplicates: 0, unknownLines: {}, total: 0 };
+  const clean = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  const parts = clean.split(/\n(?=Poker Hand #)/);
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    if (!part.startsWith('Poker Hand #')) {
+      if (part.trim()) out.rejected.push({ id: '?', reason: 'text în afara unei mâini', sample: part.trim().slice(0, 60) });
+      continue;
+    }
+    out.total++;
+    let r;
+    try { r = parseOne(part); } catch (e) { r = { error: `eroare de citire: ${e.message}`, id: (/#(\S+?):/.exec(part) ?? [])[1] ?? '?' }; }
+    if (r.error) { out.rejected.push({ id: r.id, reason: r.error }); continue; }
+    if (seen.has(r.hand.id)) { out.duplicates++; continue; }
+    seen.add(r.hand.id);
+    for (const s of r.shapes) out.unknownLines[s] = (out.unknownLines[s] ?? 0) + 1;
+    if (!r.hand.checks.potOk) { out.rejected.push({ id: r.hand.id, reason: `potul nu se verifică (diferență ${(r.hand.checks.potDiff / 100).toFixed(2)}$)` }); continue; }
+    out.hands.push(r.hand);
+  }
+  return out;
+}
+
+const HAND_STREETS = STREETS;
+
+// ---- classify.js
+// Clasificarea unei mâini: tip de pot, rolul lui Hero, poziție relativă, număr de jucători pe flop, textura flopului.
+
+const RANK_ORDER = '23456789TJQKA';
+
+function flopTexture(flop) {
+  const ranks = flop.map((c) => RANK_ORDER.indexOf(c[0]) + 2);
+  const suits = new Set(flop.map((c) => c[1])).size;
+  const top = Math.max(...ranks);
+  const span = (r) => Math.max(...r) - Math.min(...r);
+  const low = ranks.map((r) => (r === 14 ? 1 : r)); // asul poate fi și carte mică (A-2-3)
+  return {
+    high: top === 14 ? 'A' : top === 13 ? 'K' : top === 12 ? 'Q' : top >= 10 ? 'J–T' : '9 sau mai jos',
+    paired: new Set(ranks).size < 3,
+    suits: suits === 3 ? 'rainbow' : suits === 2 ? 'două de o culoare' : 'monoton',
+    connected: Math.min(span(ranks), span(low)) <= 4,
+  };
+}
+
+// Ordinea de joc postflop: primul loc după buton vorbește primul, butonul ultimul.
+function postflopOrder(h, names) {
+  const M = Math.max(...h.players.map((p) => p.seat), 2);
+  const key = (p) => (p.seat - h.buttonSeat - 1 + 10 * M) % M;
+  return h.players.filter((p) => names.has(p.name)).sort((a, b) => key(a) - key(b)).map((p) => p.name);
+}
+
+function classify(h) {
+  const pre = h.streets.preflop;
+  const raises = pre.filter((a) => a.type === 'raise');
+  const aggressor = raises.length ? raises[raises.length - 1].player : null;
+  const potType = raises.length === 0 ? 'limpat' : raises.length === 1 ? 'single-raised' : raises.length === 2 ? '3-bet' : '4-bet+';
+  const heroVoluntary = pre.some((a) => a.player === 'Hero' && (a.type === 'call' || a.type === 'raise'));
+  const heroRole = !h.heroSawFlop ? null : aggressor === 'Hero' ? 'agresor' : heroVoluntary ? 'caller' : 'blind';
+  const c = { potType, aggressor, heroRole, sawFlop: h.heroSawFlop, flopPlayers: [], headsUp: null, position: null, texture: null };
+  if (h.flop.length !== 3) return c;
+  const foldedPre = new Set(pre.filter((a) => a.type === 'fold').map((a) => a.player));
+  c.flopPlayers = postflopOrder(h, new Set(h.players.filter((p) => !foldedPre.has(p.name)).map((p) => p.name)));
+  c.headsUp = c.flopPlayers.length === 2;
+  c.texture = flopTexture(h.flop);
+  if (h.heroSawFlop) c.position = c.flopPlayers[c.flopPlayers.length - 1] === 'Hero' ? 'IP' : 'OOP'; // IP = ultimul la vorbă
+  return c;
+}
+
+// ---- stats.js
+// Statistici postflop pentru Hero. Intrare: mâini parsate, fiecare cu câmpul `cls` (din classify).
+
+const Z = 1.96;
+const MIN_N = 30;
+
+// Proporție cu interval de încredere Wilson de 95% (în procente).
+function prop(k, n) {
+  if (!n) return { k, n, p: null, lo: null, hi: null, few: true };
+  const p = k / n, d = 1 + (Z * Z) / n;
+  const mid = (p + (Z * Z) / (2 * n)) / d, half = (Z * Math.sqrt((p * (1 - p)) / n + (Z * Z) / (4 * n * n))) / d;
+  return { k, n, p: 100 * p, lo: 100 * Math.max(0, mid - half), hi: 100 * Math.min(1, mid + half), few: n < MIN_N };
+}
+
+// Ce a făcut Hero pe o stradă, raportat la primul bet al străzii.
+function heroStreet(h, st) {
+  const acts = h.streets[st].filter((a) => a.type !== 'post');
+  const firstBet = acts.findIndex((a) => a.type === 'bet');
+  const heroIdx = acts.findIndex((a) => a.player === 'Hero');
+  const v = { acted: heroIdx >= 0, open: false, bet: null, bettor: firstBet >= 0 ? acts[firstBet].player : null, faced: null, checkedFirst: false, acts: acts.filter((a) => a.player === 'Hero') };
+  if (heroIdx < 0) return v;
+  // „open” = Hero vorbește fără niciun bet înaintea lui (poate da check sau bet)
+  v.open = firstBet < 0 || heroIdx <= firstBet;
+  if (v.open && acts[heroIdx].type === 'bet') v.bet = acts[heroIdx];
+  v.checkedFirst = v.open && acts[heroIdx].type === 'check';
+  if (firstBet >= 0 && acts[firstBet].player !== 'Hero') {
+    const j = acts.findIndex((a, i) => i > firstBet && a.player === 'Hero');
+    if (j >= 0) {
+      const raisedBefore = acts.slice(firstBet + 1, j).some((a) => a.type === 'raise');
+      v.faced = { action: acts[j], response: acts[j].type, clean: !raisedBefore, bettor: acts[firstBet].player };
+    }
+  }
+  return v;
+}
+
+const SIZE_BUCKETS = ['sub 40%', '40–70%', '70–100%', 'peste 100%'];
+const sizeBucket = (a) => { const r = a.amount / a.potBefore; return r < 0.4 ? 0 : r < 0.7 ? 1 : r <= 1 ? 2 : 3; };
+
+function heroLine(h) {
+  const parts = [];
+  for (const st of ['flop', 'turn', 'river']) {
+    const a = h.streets[st].filter((x) => x.player === 'Hero').map((x) => x.type);
+    if (a.length) parts.push(`${st} ${a.join('-')}`);
+  }
+  return parts.join(' · ') || 'fără acțiune postflop (all-in înainte de flop)';
+}
+
+function computeStats(hands) {
+  const sumBb = (list) => list.reduce((s, h) => s + h.heroNetBb, 0);
+  const row = (list) => ({ n: list.length, net: sumBb(list), bb100: list.length ? (100 * sumBb(list)) / list.length : null });
+  const flopHands = hands.filter((h) => h.cls.sawFlop);
+  const out = { minN: MIN_N, sizeBuckets: SIZE_BUCKETS };
+
+  out.summary = {
+    all: row(hands), preflopOnly: row(hands.filter((h) => !h.cls.sawFlop)), flop: row(flopHands),
+    stakes: [...new Set(hands.map((h) => h.stakes))].sort(),
+    from: hands.reduce((m, h) => (!m || h.date < m ? h.date : m), null), to: hands.reduce((m, h) => (!m || h.date > m ? h.date : m), null),
+  };
+
+  // 1. Unde se duc banii
+  const groups = new Map();
+  for (const h of flopHands) {
+    const c = h.cls, key = [c.potType, c.heroRole, c.position, c.headsUp ? 'heads-up' : 'multiway'].join('|');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(h);
+  }
+  out.money = [...groups].map(([key, list]) => { const [potType, role, position, players] = key.split('|'); return { potType, role, position, players, ...row(list) }; })
+    .sort((a, b) => a.net - b.net);
+
+  // 2. Ca agresor
+  const agg = flopHands.filter((h) => h.cls.heroRole === 'agresor');
+  const views = new Map(flopHands.map((h) => [h, { flop: heroStreet(h, 'flop'), turn: heroStreet(h, 'turn'), river: heroStreet(h, 'river') }]));
+  const cbetOpp = agg.filter((h) => views.get(h).flop.open);
+  const didCbet = (h) => !!views.get(h).flop.bet;
+  const cb = (label, f) => { const l = cbetOpp.filter(f); return { label, ...prop(l.filter(didCbet).length, l.length) }; };
+  const turnOpp = cbetOpp.filter((h) => didCbet(h) && views.get(h).turn.open);
+  const turnBet = turnOpp.filter((h) => views.get(h).turn.bet);
+  const riverOpp = turnBet.filter((h) => views.get(h).river.open);
+  const sizes = { flop: [0, 0, 0, 0], turn: [0, 0, 0, 0], river: [0, 0, 0, 0] };
+  for (const h of agg) for (const st of ['flop', 'turn', 'river']) { const b = views.get(h)[st].bet; if (b) sizes[st][sizeBucket(b)]++; }
+  out.aggressor = {
+    cbet: [
+      cb('total', () => true),
+      { ...cb('heads-up', (h) => h.cls.headsUp), ref: 'cbetFlopHU' }, cb('multiway', (h) => !h.cls.headsUp),
+      cb('IP', (h) => h.cls.position === 'IP'), cb('OOP', (h) => h.cls.position === 'OOP'),
+    ],
+    texture: [
+      ...['A', 'K', 'Q', 'J–T', '9 sau mai jos'].map((t) => cb(`carte mare ${t}`, (h) => h.cls.texture.high === t)),
+      cb('board împerecheat', (h) => h.cls.texture.paired), cb('board neîmperecheat', (h) => !h.cls.texture.paired),
+      ...['rainbow', 'două de o culoare', 'monoton'].map((t) => cb(t, (h) => h.cls.texture.suits === t)),
+      cb('conectat', (h) => h.cls.texture.connected), cb('neconectat', (h) => !h.cls.texture.connected),
+    ],
+    turn: prop(turnBet.length, turnOpp.length),
+    river: prop(riverOpp.filter((h) => views.get(h).river.bet).length, riverOpp.length),
+    sizes,
+  };
+
+  // 3. Ca apărător
+  const def = flopHands.filter((h) => h.cls.heroRole !== 'agresor');
+  const frc = (list, get) => {
+    const f = list.map(get), n = f.length, c = (t) => f.filter((x) => x.response === t).length;
+    return { n, fold: prop(c('fold'), n), call: prop(c('call'), n), raise: prop(c('raise'), n) };
+  };
+  const facing = (st, extra = () => true) => def.filter((h) => { const f = views.get(h)[st].faced; return f && f.clean && extra(h, f); });
+  const vsCbetHands = facing('flop', (h, f) => f.bettor === h.cls.aggressor);
+  const xrOpp = def.filter((h) => { const v = views.get(h).flop; return v.checkedFirst && v.faced; });
+  const aggIn = (h) => h.cls.aggressor && h.cls.flopPlayers.includes(h.cls.aggressor);
+  const before = (h) => h.cls.flopPlayers.indexOf('Hero') < h.cls.flopPlayers.indexOf(h.cls.aggressor);
+  const donkOpp = def.filter((h) => aggIn(h) && before(h) && views.get(h).flop.open);
+  const stabOpp = def.filter((h) => aggIn(h) && !before(h) && views.get(h).flop.open &&
+    h.streets.flop.some((a) => a.player === h.cls.aggressor && a.type === 'check'));
+  const probeOpp = def.filter((h) => aggIn(h) && !h.streets.flop.some((a) => a.type === 'bet') && views.get(h).turn.open);
+  out.defender = {
+    vsCbet: { ...frc(vsCbetHands, (h) => views.get(h).flop.faced), ref: { fold: 'foldVsCbetFlop' } },
+    vsTurn: frc(facing('turn'), (h) => views.get(h).turn.faced),
+    vsRiver: frc(facing('river'), (h) => views.get(h).river.faced),
+    checkRaise: prop(xrOpp.filter((h) => views.get(h).flop.faced.response === 'raise').length, xrOpp.length),
+    donk: prop(donkOpp.filter((h) => views.get(h).flop.bet).length, donkOpp.length),
+    stab: prop(stabOpp.filter((h) => views.get(h).flop.bet).length, stabOpp.length),
+    probe: prop(probeOpp.filter((h) => views.get(h).turn.bet).length, probeOpp.length),
+  };
+
+  // 4. Showdown
+  const sd = flopHands.filter((h) => h.heroShowdown), noSd = flopHands.filter((h) => !h.heroShowdown);
+  out.showdown = {
+    wtsd: { ...prop(sd.length, flopHands.length), ref: 'wtsd' },
+    wsd: { ...prop(sd.filter((h) => h.heroCollected > 0).length, sd.length), ref: 'wsd' },
+    wonNoSd: prop(noSd.filter((h) => h.heroCollected > 0).length, flopHands.length),
+    netSd: row(sd), netNoSd: row(noSd),
+  };
+
+  // 5. Call-uri pe river
+  const calls = [];
+  for (const h of flopHands) {
+    const a = h.streets.river.filter((x) => x.player === 'Hero' && x.type === 'call').pop();
+    // rezultatul call-ului în sine: ce a încasat Hero minus suma plătită la call
+    if (a) calls.push({ h, need: a.amount / (a.potBefore + a.amount), won: h.heroCollected > 0, ev: (h.heroCollected - a.amount) / h.bb });
+  }
+  out.riverCalls = {
+    won: prop(calls.filter((c) => c.won).length, calls.length),
+    need: calls.length ? (100 * calls.reduce((s, c) => s + c.need, 0)) / calls.length : null,
+    callNet: calls.reduce((s, c) => s + c.ev, 0),
+  };
+
+  // 6. Beturi pe river
+  const rb = { fold: 0, won: 0, lost: 0, raised: 0 }, rbHands = [];
+  for (const h of flopHands) {
+    const acts = h.streets.river, i = acts.findIndex((a) => a.player === 'Hero' && a.type === 'bet');
+    if (i < 0) continue;
+    rbHands.push(h);
+    const after = acts.slice(i + 1).filter((a) => a.player !== 'Hero');
+    if (after.some((a) => a.type === 'raise')) rb.raised++;
+    else if (after.some((a) => a.type === 'call')) h.heroCollected > 0 ? rb.won++ : rb.lost++;
+    else rb.fold++;
+  }
+  const nb = rbHands.length;
+  out.riverBets = { n: nb, fold: prop(rb.fold, nb), won: prop(rb.won, nb), lost: prop(rb.lost, nb), raised: prop(rb.raised, nb), net: row(rbHands) };
+
+  // 7. Linii care pierd
+  const lines = new Map();
+  for (const h of flopHands) { const k = heroLine(h); if (!lines.has(k)) lines.set(k, []); lines.get(k).push(h); }
+  out.lines = [...lines].map(([line, list]) => ({ line, ...row(list) })).filter((l) => l.n >= 10 && l.net < 0).sort((a, b) => a.net - b.net).slice(0, 10);
+
+  // 8. Cele mai mari mâini pierdute
+  out.worst = [...hands].filter((h) => h.heroNet < 0).sort((a, b) => a.heroNetBb - b.heroNetBb).slice(0, 30);
+  return out;
+}
+
+// Acțiunea completă a unei mâini, ca text lizibil (sume în bb).
+function describeHand(h) {
+  const bb = (c) => `${+(c / h.bb).toFixed(1)}bb`;
+  const who = (a) => (a.player === 'Hero' ? 'Hero' : a.pos ?? a.player);
+  const verb = { fold: 'fold', check: 'check', call: 'call', bet: 'bet', raise: 'raise la' };
+  const out = [];
+  let shownCards = 0;
+  for (const st of ['preflop', 'flop', 'turn', 'river']) {
+    const acts = h.streets[st].filter((a) => a.type !== 'post');
+    const n = { preflop: 0, flop: 3, turn: 4, river: 5 }[st];
+    if (st !== 'preflop' && h.board.length < n) break;
+    if (!acts.length && st !== 'preflop' && !h.showdown) break;
+    const cards = st === 'preflop' ? '' : h.board.slice(shownCards, n).join(' ');
+    shownCards = n;
+    const potBefore = acts.length ? acts[0].potBefore : null;
+    const text = acts.map((a) => `${who(a)} ${verb[a.type]}${a.type === 'fold' || a.type === 'check' ? '' : ' ' + bb(a.type === 'raise' ? a.to : a.amount)}${a.allin ? ' (all-in)' : ''}`).join(', ');
+    out.push({ street: st, cards, pot: potBefore != null && st !== 'preflop' ? bb(potBefore) : null, text: text || 'fără acțiune (all-in)' });
+  }
+  return out;
+}
+
+// ---- zip.js
+// Cititor minim de arhive zip (metodele „stored” și „deflate”), fără dependențe.
+// Folosește DecompressionStream, disponibil în browserele actuale și în Node 18+.
+
+async function inflateRaw(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// Întoarce [{ name, text }] pentru fișierele .txt din arhivă.
+async function readZipTexts(buffer) {
+  const u8 = new Uint8Array(buffer), dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('nu este o arhivă zip validă');
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder('utf-8'), out = [];
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('director zip deteriorat');
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nameLen = dv.getUint16(p + 28, true), extraLen = dv.getUint16(p + 30, true), commentLen = dv.getUint16(p + 32, true);
+    const local = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nameLen));
+    p += 46 + nameLen + extraLen + commentLen;
+    if (name.endsWith('/') || !/\.txt$/i.test(name)) continue;
+    const start = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
+    const data = u8.subarray(start, start + csize);
+    if (method !== 0 && method !== 8) throw new Error(`metodă de compresie nesuportată (${method}) la ${name}`);
+    out.push({ name, text: dec.decode(method === 0 ? data : await inflateRaw(data)) });
+  }
+  return out;
+}
+
+// ---- ui.js
+// Interfața analizorului. La build, toate modulele sunt lipite într-un singur fișier HTML.
+
+
+
+
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const nf = (x, d = 1) => x.toLocaleString('ro-RO', { minimumFractionDigits: d, maximumFractionDigits: d });
+const bbTxt = (x, d = 1) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), d)}</span>`;
+const SUIT = { s: '♠', h: '♥', d: '♦', c: '♣' };
+const cardsHtml = (cards) => `<span class="cards">${cards.map((c) => `<span class="c${c[1]}">${c[0]}${SUIT[c[1]]}</span>`).join(' ')}</span>`;
+
+const state = { hands: [], seen: new Set(), rejected: [], duplicates: 0, unknown: {}, files: 0, total: 0 };
+
+// Procent cu n și interval de încredere; sub pragul minim nu se colorează și nu se compară cu reperul.
+function pctCell(p, refKey) {
+  if (!p.n) return '<span class="few">fără cazuri</span>';
+  const ci = `<span class="ci">${p.k}/${p.n} · IC 95%: ${nf(p.lo, 0)}–${nf(p.hi, 0)}%</span>`;
+  if (p.few) return `<span class="few">${nf(p.p)}% · prea puține mâini</span> ${ci}`;
+  let tag = '';
+  const r = refKey && REFERENCE[refKey];
+  if (r) {
+    const where = p.p < r.min ? 'sub reper' : p.p > r.max ? 'peste reper' : 'în reper';
+    tag = ` <span class="tag ${where === 'în reper' ? 'ok' : 'off'}">${where} · reper orientativ ${r.min}–${r.max}%</span>`;
+  }
+  return `<span class="pct">${nf(p.p)}%</span> ${ci}${tag}`;
+}
+const table = (head, rows) => `<div class="scroll"><table><thead><tr>${head.map((h) => `<th${h.startsWith('#') ? ' class="num"' : ''}>${esc(h.replace(/^#/, ''))}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td${head[i].startsWith('#') ? ' class="num"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const propRows = (list) => table(['Situație', 'Frecvență'], list.map((r) => [esc(r.label), pctCell(r, r.ref)]));
+const netRow = (r) => [String(r.n), bbTxt(r.net), r.n ? bbTxt(r.bb100) : '–'];
+
+function filtered() {
+  const stake = $('fStake').value, from = $('fFrom').value, to = $('fTo').value, pl = $('fPlayers').value;
+  return state.hands.filter((h) => {
+    if (stake && h.stakes !== stake) return false;
+    const day = h.date.slice(0, 10);
+    if (from && day < from) return false;
+    if (to && day > to) return false;
+    if (pl && !(h.cls.sawFlop && h.cls.headsUp === (pl === 'hu'))) return false;
+    return true;
+  });
+}
+
+function renderStatus() {
+  const unknown = Object.entries(state.unknown).sort((a, b) => b[1] - a[1]);
+  const reasons = {};
+  for (const r of state.rejected) { const k = r.reason.replace(/\(.*\)/, '').trim(); reasons[k] = (reasons[k] ?? 0) + 1; }
+  let html = `<h2>Ce s-a citit</h2><div class="kpis">
+    <div class="kpi"><b>${state.hands.length.toLocaleString('ro-RO')}</b><span>mâini citite din ${state.files} fișiere</span></div>
+    <div class="kpi"><b>${state.rejected.length}</b><span>mâini respinse</span></div>
+    <div class="kpi"><b>${state.duplicates}</b><span>dubluri eliminate</span></div>
+    <div class="kpi"><b>${unknown.reduce((s, u) => s + u[1], 0)}</b><span>linii necunoscute</span></div></div>`;
+  if (state.rejected.length) html += `<div class="note"><b>Mâini respinse:</b><ul class="plain">${Object.entries(reasons).map(([k, v]) => `<li>${esc(k)}: ${v}</li>`).join('')}</ul>
+    <details><summary>Lista (${state.rejected.length})</summary><ul class="plain">${state.rejected.slice(0, 200).map((r) => `<li>${esc(r.id)} — ${esc(r.reason)}</li>`).join('')}</ul></details></div>`;
+  if (unknown.length) html += `<div class="note"><b>Linii care nu se potrivesc cu nimic cunoscut</b> (mâinile respective au fost păstrate dacă potul se verifică):<ul class="plain">${unknown.slice(0, 30).map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul></div>`;
+  const tb = state.hands.filter((h) => h.timeBank).reduce((s, h) => s + h.timeBank, 0), tbN = state.hands.filter((h) => h.timeBank).length;
+  if (tbN) html += `<p class="sub" style="margin-top:10px">„Time bank card”: ${tbN} ${tbN === 1 ? 'mână' : 'mâini'}, ${(tb / 100).toFixed(2)} $ în afara potului, neinclus în rezultate.</p>`;
+  $('status').innerHTML = html;
+  $('status').classList.remove('hidden');
+}
+
+function render() {
+  const hands = filtered();
+  $('report').classList.toggle('hidden', !state.hands.length);
+  if (!state.hands.length) return;
+  const s = computeStats(hands);
+  const S = s.summary;
+  const out = [];
+  const sec = (title, sub, body) => out.push(`<section><h2>${title}</h2>${sub ? `<p class="sub">${sub}</p>` : ''}${body}</section>`);
+  const day = (d) => (d ? d.slice(0, 10).split('-').reverse().join('.') : '–');
+
+  sec('Rezultat', `${hands.length.toLocaleString('ro-RO')} mâini în filtru · ${day(S.from)} – ${day(S.to)} · mize ${S.stakes.map(esc).join(', ') || '–'}`,
+    `<div class="kpis">
+      <div class="kpi"><b>${bbTxt(S.all.net)} bb</b><span>rezultat net total (${S.all.n ? bbTxt(S.all.bb100) : '–'} bb/100)</span></div>
+      <div class="kpi"><b>${bbTxt(S.preflopOnly.net)} bb</b><span>${S.preflopOnly.n.toLocaleString('ro-RO')} mâini terminate preflop</span></div>
+      <div class="kpi"><b>${bbTxt(S.flop.net)} bb</b><span>${S.flop.n.toLocaleString('ro-RO')} mâini în care Hero a văzut flopul</span></div>
+      <div class="kpi"><b>${bbTxt(s.showdown.netSd.net)} bb</b><span>la showdown (${s.showdown.netSd.n} mâini)</span></div>
+      <div class="kpi"><b>${bbTxt(s.showdown.netNoSd.net)} bb</b><span>postflop fără showdown (${s.showdown.netNoSd.n} mâini)</span></div>
+    </div><p class="note plain">Rezultatele sunt după rake. Toate statisticile de mai jos privesc doar mâinile în care Hero a văzut flopul.</p>`);
+
+  sec('1. Unde se duc banii', 'Tip de pot × rolul lui Hero × poziție × număr de jucători pe flop, de la cel mai mare minus. IP = Hero vorbește ultimul pe flop.',
+    table(['Tip de pot', 'Rol', 'Poziție', 'Jucători', '#Mâini', '#Net (bb)', '#bb/100'],
+      s.money.map((r) => [esc(r.potType), esc(r.role), r.position, r.players, ...(r.n < s.minN ? [String(r.n), bbTxt(r.net), '<span class="few">prea puține mâini</span>'] : netRow(r))])));
+
+  const A = s.aggressor;
+  sec('2. Ca agresor preflop', 'C-bet = Hero pariază primul pe flop, când nimeni nu a pariat înaintea lui.',
+    `<h3>C-bet pe flop</h3>${propRows(A.cbet)}<h3>C-bet pe textură</h3>${propRows(A.texture)}
+     <h3>Continuare</h3>${propRows([{ label: 'al doilea bet, pe turn, după c-bet', ...A.turn }, { label: 'al treilea bet, pe river', ...A.river }])}
+     <h3>Mărimea beturilor (din pot)</h3>${table(['Stradă', ...s.sizeBuckets.map((b) => '#' + b), '#Beturi'],
+      ['flop', 'turn', 'river'].map((st) => { const t = A.sizes[st].reduce((a, b) => a + b, 0); return [st, ...A.sizes[st].map((n) => (t ? `${nf((100 * n) / t, 0)}% <span class="ci">(${n})</span>` : '–')), t < s.minN ? `${t} <span class="few">· prea puține</span>` : String(t)]; }))}`);
+
+  const D = s.defender;
+  const frc = (label, d, ref = {}) => [esc(label), pctCell(d.fold, ref.fold), pctCell(d.call), pctCell(d.raise)];
+  sec('3. Ca apărător', 'Mâinile în care Hero nu este agresorul preflop.',
+    `<h3>Contra bet</h3>${table(['Situație', 'Fold', 'Call', 'Raise'], [frc('contra c-bet pe flop', D.vsCbet, D.vsCbet.ref), frc('contra bet pe turn', D.vsTurn), frc('contra bet pe river', D.vsRiver)])}
+     <h3>Inițiativă</h3>${propRows([
+      { label: 'check-raise pe flop (după check și bet al adversarului)', ...D.checkRaise },
+      { label: 'donk bet pe flop (pariază înaintea agresorului)', ...D.donk },
+      { label: 'bet pe flop după check-ul agresorului', ...D.stab },
+      { label: 'bet pe turn după un flop fără niciun bet', ...D.probe }])}`);
+
+  const W = s.showdown;
+  sec('4. Showdown', '', propRows([
+    { label: 'ajunge la showdown după ce vede flopul', ...W.wtsd, ref: 'wtsd' },
+    { label: 'câștigă la showdown', ...W.wsd, ref: 'wsd' },
+    { label: 'câștigă potul fără showdown (din mâinile cu flop)', ...W.wonNoSd }]) +
+    table(['', '#Mâini', '#Net (bb)', '#bb/100'], [['mâini cu showdown', ...netRow(W.netSd)], ['mâini fără showdown', ...netRow(W.netNoSd)]]));
+
+  const RC = s.riverCalls;
+  let verdict = '';
+  if (RC.won.n && !RC.won.few) {
+    verdict = RC.won.hi < RC.need ? '<p class="note"><b>Leak direct:</b> câștigi mai rar decât cer pot odds, chiar și la marginea de sus a intervalului.</p>'
+      : RC.won.p < RC.need ? '<p class="note">Câștigi mai rar decât cer pot odds, dar diferența este încă în marja de eroare.</p>'
+      : '<p class="note plain">Câștigi cel puțin cât cer pot odds în medie.</p>';
+  }
+  sec('5. Call-uri pe river', 'Echitatea necesară = suma de call ÷ (pot + suma de call), media pe toate call-urile.',
+    RC.won.n ? propRows([{ label: 'call-uri câștigate', ...RC.won }]) +
+      `<div class="kpis"><div class="kpi"><b>${nf(RC.need)}%</b><span>echitate necesară, în medie</span></div>
+       <div class="kpi"><b>${bbTxt(RC.callNet)} bb</b><span>rezultatul call-urilor (încasat minus plătit la call)</span></div></div>${verdict}` : '<p class="few">fără cazuri</p>');
+
+  const RB = s.riverBets;
+  sec('6. Beturi pe river', `${RB.n} beturi ale lui Hero pe river (primul bet al străzii).`, RB.n ? propRows([
+    { label: 'adversarul dă fold', ...RB.fold }, { label: 'plătit și câștigă', ...RB.won },
+    { label: 'plătit și pierde', ...RB.lost }, { label: 'primește raise', ...RB.raised }]) : '<p class="few">fără cazuri</p>');
+
+  sec('7. Linii care pierd', 'Secvența acțiunilor lui Hero pe străzi; primele 10 după totalul pierdut, cu cel puțin 10 mâini. Rezultatul este al întregii mâini.',
+    s.lines.length ? table(['Linie', '#Mâini', '#Net (bb)', '#bb/mână'], s.lines.map((l) => [esc(l.line), String(l.n), bbTxt(l.net), bbTxt(l.net / l.n)])) : '<p class="few">nicio linie cu cel puțin 10 mâini pe minus</p>');
+
+  sec('8. Cele mai mari mâini pierdute', 'Atinge o mână pentru acțiunea completă. Cele marcate „heads-up pe flop” pot merge la solver.',
+    s.worst.map((h, i) => {
+      const c = h.cls;
+      const tags = c.sawFlop ? `${esc(c.potType)} · ${c.heroRole} · ${c.position}` : 'fără flop';
+      const ro = (t) => t.replace(/(\d)\.(\d)/g, '$1,$2'); // virgulă zecimală
+      const lines = describeHand(h).map((l) => `<div class="street"><b>${l.street}${l.pot ? ` (${ro(l.pot)})` : ''}</b><span>${l.cards ? cardsHtml(l.cards.split(' ')) + ' — ' : ''}${esc(ro(l.text))}</span></div>`).join('');
+      const shown = Object.entries(h.shown).filter(([n]) => n !== 'Hero').map(([n, cs]) => `${esc(h.players.find((p) => p.name === n)?.pos ?? n)} ${cardsHtml(cs)}`).join(', ');
+      return `<details><summary><span class="amt neg">−${nf(-h.heroNetBb)} bb</span>${cardsHtml(h.heroCards)}<span>${h.heroPos}</span><span class="sub">${tags}</span>${c.sawFlop && c.headsUp ? '<span class="tag hu">heads-up pe flop</span>' : c.sawFlop ? '<span class="tag">multiway</span>' : ''}</summary>
+        ${lines}${shown ? `<div class="street"><b>arătat</b><span>${shown}</span></div>` : ''}
+        <div class="street"><b>mâna</b><span class="sub">#${i + 1} · ${esc(h.id)} · ${day(h.date)} · ${esc(h.stakes)}${h.runs > 1 ? ` · rulată de ${h.runs} ori` : ''}</span></div></details>`;
+    }).join('') || '<p class="few">nicio mână pierdută</p>');
+
+  $('sections').innerHTML = out.join('');
+}
+
+async function addFiles(files) {
+  $('busy').textContent = 'Se citesc fișierele…';
+  for (const f of files) {
+    try {
+      const texts = /\.zip$/i.test(f.name) ? await readZipTexts(await f.arrayBuffer()) : [{ name: f.name, text: await f.text() }];
+      for (const t of texts) {
+        const r = parseHands(t.text, state.seen);
+        for (const h of r.hands) h.cls = classify(h);
+        state.hands.push(...r.hands); state.rejected.push(...r.rejected); state.duplicates += r.duplicates; state.total += r.total; state.files++;
+        for (const [k, v] of Object.entries(r.unknownLines)) state.unknown[k] = (state.unknown[k] ?? 0) + v;
+      }
+    } catch (e) {
+      state.rejected.push({ id: f.name, reason: `fișier necitit: ${e.message}` });
+    }
+  }
+  $('busy').textContent = '';
+  const stakes = [...new Set(state.hands.map((h) => h.stakes))].sort();
+  const cur = $('fStake').value;
+  $('fStake').innerHTML = '<option value="">toate mizele</option>' + stakes.map((s) => `<option value="${esc(s)}">${esc(s)} $</option>`).join('');
+  $('fStake').value = stakes.includes(cur) ? cur : '';
+  renderStatus();
+  render();
+}
+
+function initUi() {
+  const drop = $('drop'), input = $('file');
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+  input.addEventListener('change', () => { addFiles([...input.files]); input.value = ''; });
+  for (const ev of ['dragenter', 'dragover']) document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); });
+  for (const ev of ['dragleave', 'drop']) document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); });
+  document.addEventListener('drop', (e) => addFiles([...e.dataTransfer.files].filter((f) => /\.(txt|zip)$/i.test(f.name))));
+  for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).addEventListener('change', render);
+  $('reset').addEventListener('click', () => { for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).value = ''; render(); });
+  $('ref').innerHTML = Object.values(REFERENCE).filter((r) => r.eticheta).map((r) => `<li>${esc(r.eticheta)}: ${r.min}–${r.max}%</li>`).join('');
+  window.__addFiles = addFiles; // pentru verificări automate
+}
+initUi();
+
+</script>
+</body>
+</html>

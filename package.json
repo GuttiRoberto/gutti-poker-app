@@ -1,1 +1,9 @@
-{"name":"gutti-poker-lab","private":true,"type":"module","scripts":{"test":"node --test"}}
+{
+  "name": "gutti-poker-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build.mjs"
+  }
+}
