@@ -3,6 +3,7 @@ import { parseHands } from './hands.js';
 import { classify } from './classify.js';
 import { computeStats, describeHand } from './stats.js';
 import { readZipTexts } from './zip.js';
+import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -10,6 +11,11 @@ const nf = (x, d = 1) => x.toLocaleString('ro-RO', { minimumFractionDigits: d, m
 const bbTxt = (x, d = 1) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), d)}</span>`;
 const SUIT = { s: '♠', h: '♥', d: '♦', c: '♣' };
 const cardsHtml = (cards) => `<span class="cards">${cards.map((c) => `<span class="c${c[1]}">${c[0]}${SUIT[c[1]]}</span>`).join(' ')}</span>`;
+
+const smallTag = (n) => (n > 0 && n < SMALL_SAMPLE ? ' <span class="tag off">eșantion mic</span>' : '');
+const nCell = (n) => `${n.toLocaleString('ro-RO')}${smallTag(n)}`;
+const usdTxt = (x) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 2)} $</span>`;
+const ciTxt = (c) => (c.lo == null ? '–' : `<span class="ci">IC 95%: ${c.lo < 0 ? '−' : '+'}${nf(Math.abs(c.lo))} … ${c.hi < 0 ? '−' : '+'}${nf(Math.abs(c.hi))}</span>`);
 
 const state = { hands: [], seen: new Set(), rejected: [], duplicates: 0, unknown: {}, files: 0, total: 0 };
 
@@ -24,11 +30,11 @@ function pctCell(p, refKey) {
     const where = p.p < r.min ? 'sub reper' : p.p > r.max ? 'peste reper' : 'în reper';
     tag = ` <span class="tag ${where === 'în reper' ? 'ok' : 'off'}">${where} · reper orientativ ${r.min}–${r.max}%</span>`;
   }
-  return `<span class="pct">${nf(p.p)}%</span> ${ci}${tag}`;
+  return `<span class="pct">${nf(p.p)}%</span> ${ci}${tag}${smallTag(p.n)}`;
 }
 const table = (head, rows) => `<div class="scroll"><table><thead><tr>${head.map((h) => `<th${h.startsWith('#') ? ' class="num"' : ''}>${esc(h.replace(/^#/, ''))}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td${head[i].startsWith('#') ? ' class="num"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 const propRows = (list) => table(['Situație', 'Frecvență'], list.map((r) => [esc(r.label), pctCell(r, r.ref)]));
-const netRow = (r) => [String(r.n), bbTxt(r.net), r.n ? bbTxt(r.bb100) : '–'];
+const netRow = (r) => [nCell(r.n), bbTxt(r.net), r.n ? bbTxt(r.bb100) : '–'];
 
 function filtered() {
   const stake = $('fStake').value, from = $('fFrom').value, to = $('fTo').value, pl = $('fPlayers').value;
@@ -65,6 +71,7 @@ function render() {
   $('report').classList.toggle('hidden', !state.hands.length);
   if (!state.hands.length) return;
   const s = computeStats(hands);
+  const B = computeBreakdowns(hands);
   const S = s.summary;
   const out = [];
   const sec = (title, sub, body) => out.push(`<section><h2>${title}</h2>${sub ? `<p class="sub">${sub}</p>` : ''}${body}</section>`);
@@ -77,11 +84,30 @@ function render() {
       <div class="kpi"><b>${bbTxt(S.flop.net)} bb</b><span>${S.flop.n.toLocaleString('ro-RO')} mâini în care Hero a văzut flopul</span></div>
       <div class="kpi"><b>${bbTxt(s.showdown.netSd.net)} bb</b><span>la showdown (${s.showdown.netSd.n} mâini)</span></div>
       <div class="kpi"><b>${bbTxt(s.showdown.netNoSd.net)} bb</b><span>postflop fără showdown (${s.showdown.netNoSd.n} mâini)</span></div>
-    </div><p class="note plain">Rezultatele sunt după rake. Toate statisticile de mai jos privesc doar mâinile în care Hero a văzut flopul.</p>`);
+    </div>
+    <h3>Pe miză</h3>${table(['Miză', 'Big blind', '#Mâini', '#Net (bb)', '#Net ($)', '#bb/100', 'Interval bb/100'],
+      [...B.byStake.map((r) => [esc(r.stakes), `${nf(r.bb, 2)} $`, nCell(r.n), bbTxt(r.net), usdTxt(r.usd), bbTxt(r.bb100), ciTxt(r.ci)]),
+        ['<b>total</b>', '', nCell(B.total.n), bbTxt(B.total.net), usdTxt(B.total.usd), B.total.n ? bbTxt(B.total.bb100) : '–', ciTxt(B.total.ci)]])}
+    <p class="note plain">bb se calculează pe fiecare mână, cu big blind-ul acelei mâini, apoi se adună; de aceea totalul în bb nu se transformă în $ cu un singur curs.
+    Intervalul de încredere al bb/100 vine din deviația standard reală a mâinilor${B.total.ci.sd100 != null ? ` (${nf(B.total.ci.sd100, 0)} bb la 100 de mâini)` : ''}.
+    Rezultatele sunt după rake. Grupele sub ${SMALL_SAMPLE} de mâini sunt marcate „eșantion mic”.</p>`);
+
+  const P = B.preflop;
+  const preRow = (label, r) => [label, nCell(r.n), bbTxt(r.net), r.n ? bbTxt(r.bb100) : '–', r.blinds ? `−${nf(r.blinds)}` : '0', bbTxt(r.netNoBlinds)];
+  sec('Mâini terminate preflop', 'Mâinile în care Hero nu a văzut flopul. „Net fără blinduri” = netul plus blindurile postate de Hero.',
+    table(['Poziție', '#Mâini', '#Net (bb)', '#bb/100', '#Blinduri postate (bb)', '#Net fără blinduri (bb)'],
+      [...P.byPos.map((r) => preRow(esc(r.pos), r)), preRow('<b>SB + BB</b>', P.blinds), preRow('<b>celelalte poziții</b>', P.others), preRow('<b>total</b>', P.total)]) +
+    `<p class="sub" style="margin-top:8px">Blinduri postate în toate mâinile din filtru, inclusiv cele cu flop: ${nf(P.blindsAllHands)} bb.</p>`);
 
   sec('1. Unde se duc banii', 'Tip de pot × rolul lui Hero × poziție × număr de jucători pe flop, de la cel mai mare minus. IP = Hero vorbește ultimul pe flop.',
     table(['Tip de pot', 'Rol', 'Poziție', 'Jucători', '#Mâini', '#Net (bb)', '#bb/100'],
-      s.money.map((r) => [esc(r.potType), esc(r.role), r.position, r.players, ...(r.n < s.minN ? [String(r.n), bbTxt(r.net), '<span class="few">prea puține mâini</span>'] : netRow(r))])));
+      s.money.map((r) => [esc(r.potType), esc(r.role), r.position, r.players, ...(r.n < s.minN ? [nCell(r.n), bbTxt(r.net), '<span class="few">prea puține mâini</span>'] : netRow(r))])));
+
+  const R = B.srpCallerOop;
+  const refRow = (label, r) => [label, nCell(r.n), bbTxt(r.net), r.n ? bbTxt(r.net / r.n, 2) : '–', r.ref == null ? '–' : bbTxt(r.ref), r.diff == null ? '–' : bbTxt(r.diff), r.diffPerHand == null ? '–' : bbTxt(r.diffPerHand, 2)];
+  sec('1b. Single-raised, caller, OOP, heads-up', 'Pe poziția lui Hero și a celui care a deschis. Reperul „fold la tot” = Hero pierde doar blindul postat (1 bb din BB; din SB 0,5 bb la NL2 și 0,4 bb la NL5). Diferență pozitivă = apărarea a adus mai mult decât foldul.',
+    R.total.n ? table(['Hero / deschide', '#Mâini', '#Net (bb)', '#bb/mână', '#Fold la tot (bb)', '#Diferență (bb)', '#Diferență/mână'],
+      [...R.byHero.flatMap((g) => [refRow(`<b>Hero ${esc(g.heroPos)}</b>`, g), ...g.byOpener.map((o) => refRow(`&nbsp;&nbsp;contra ${esc(o.opener)}`, o))]), refRow('<b>total</b>', { ...R.total, ref: null, diff: null, diffPerHand: null })]) : '<p class="few">fără cazuri</p>');
 
   const A = s.aggressor;
   sec('2. Ca agresor preflop', 'C-bet = Hero pariază primul pe flop, când nimeni nu a pariat înaintea lui.',
@@ -105,7 +131,15 @@ function render() {
     { label: 'ajunge la showdown după ce vede flopul', ...W.wtsd, ref: 'wtsd' },
     { label: 'câștigă la showdown', ...W.wsd, ref: 'wsd' },
     { label: 'câștigă potul fără showdown (din mâinile cu flop)', ...W.wonNoSd }]) +
-    table(['', '#Mâini', '#Net (bb)', '#bb/100'], [['mâini cu showdown', ...netRow(W.netSd)], ['mâini fără showdown', ...netRow(W.netNoSd)]]));
+    table(['', '#Mâini', '#Net (bb)', '#bb/100'], [['mâini cu showdown', ...netRow(W.netSd)], ['mâini fără showdown', ...netRow(W.netNoSd)]]) +
+    (() => {
+      const L = B.lostShowdown, share = (x, t) => (t ? `${nf(x)} <span class="ci">(${nf((100 * x) / t, 0)}%)</span>` : '0');
+      if (!L.n) return '';
+      const row = (label, x) => [label, nf(x.total), share(x.call, x.total), share(x.raise, x.total), nf(x.blind)];
+      return `<h3>Mâini pierdute la showdown</h3><p class="sub">${nCell(L.n)} mâini în care Hero a ajuns la showdown și nu a încasat nimic: ${bbTxt(L.net)} bb. Cât a investit pe fiecare stradă și cum.</p>` +
+        table(['Stradă', '#Investit (bb)', '#Prin call', '#Prin bet/raise', '#Blinduri'], [...['preflop', 'flop', 'turn', 'river'].map((st) => row(st, L.streets[st])), row('<b>total</b>', L.totals)]) +
+        `<h3>După ultima acțiune a lui Hero</h3>` + table(['Ultima acțiune', '#Mâini', '#Net (bb)', '#bb/mână'], L.byLast.map((g) => [esc(g.label), nCell(g.n), bbTxt(g.net), g.n ? bbTxt(g.net / g.n) : '–']));
+    })());
 
   const RC = s.riverCalls;
   let verdict = '';
@@ -125,7 +159,7 @@ function render() {
     { label: 'plătit și pierde', ...RB.lost }, { label: 'primește raise', ...RB.raised }]) : '<p class="few">fără cazuri</p>');
 
   sec('7. Linii care pierd', 'Secvența acțiunilor lui Hero pe străzi; primele 10 după totalul pierdut, cu cel puțin 10 mâini. Rezultatul este al întregii mâini.',
-    s.lines.length ? table(['Linie', '#Mâini', '#Net (bb)', '#bb/mână'], s.lines.map((l) => [esc(l.line), String(l.n), bbTxt(l.net), bbTxt(l.net / l.n)])) : '<p class="few">nicio linie cu cel puțin 10 mâini pe minus</p>');
+    s.lines.length ? table(['Linie', '#Mâini', '#Net (bb)', '#bb/mână'], s.lines.map((l) => [esc(l.line), nCell(l.n), bbTxt(l.net), bbTxt(l.net / l.n)])) : '<p class="few">nicio linie cu cel puțin 10 mâini pe minus</p>');
 
   sec('8. Cele mai mari mâini pierdute', 'Atinge o mână pentru acțiunea completă. Cele marcate „heads-up pe flop” pot merge la solver.',
     s.worst.map((h, i) => {
