@@ -7,6 +7,7 @@ import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
 import { allinEv, summarizeAllin } from './allin.js';
 import { computeThreeBet } from './threebet.js';
 import { buildSeries, chartSvg, CHART_GEO } from './graph.js';
+import { computeReview, REVIEW_CLASSES, RESPONSE_NAMES } from './review.js';
 import { splitRawHands, createHandStore, idsOnlyBackend } from './store.js';
 
 const $ = (id) => document.getElementById(id);
@@ -21,7 +22,7 @@ const nCell = (n) => `${n.toLocaleString('ro-RO')}${smallTag(n)}`;
 const usdTxt = (x) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 2)} $</span>`;
 const ciTxt = (c) => (c.lo == null ? '–' : `<span class="ci">IC 95%: ${c.lo < 0 ? '−' : '+'}${nf(Math.abs(c.lo))} … ${c.hi < 0 ? '−' : '+'}${nf(Math.abs(c.hi))}</span>`);
 
-const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null, chartUnit: 'bb' };
+const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null, chartUnit: 'bb', rv: null, rvf: { pos: '', resp: '', cls: '', limit: 50 } };
 
 // Procent cu n și interval de încredere; sub pragul minim nu se colorează și nu se compară cu reperul.
 function pctCell(p, refKey) {
@@ -76,6 +77,16 @@ function renderStatus() {
   if (tbN) html += `<p class="sub" style="margin-top:10px">„Time bank card”: ${tbN} ${tbN === 1 ? 'mână' : 'mâini'}, ${(tb / 100).toFixed(2)} $ în afara potului, neinclus în rezultate.</p>`;
   $('status').innerHTML = html;
   $('status').classList.remove('hidden');
+}
+
+const dayTxt = (d) => (d ? d.slice(0, 10).split('-').reverse().join('.') : '–');
+
+// Acțiunea completă a unei mâini (pe străzi, cu cărțile arătate), pentru listele care se deschid la atingere.
+function actionHtml(h) {
+  const ro = (t) => t.replace(/(\d)\.(\d)/g, '$1,$2'); // virgulă zecimală
+  const lines = describeHand(h).map((l) => `<div class="street"><b>${l.street}${l.pot ? ` (${ro(l.pot)})` : ''}</b><span>${l.cards ? cardsHtml(l.cards.split(' ')) + ' — ' : ''}${esc(ro(l.text))}</span></div>`).join('');
+  const shown = Object.entries(h.shown).filter(([n]) => n !== 'Hero').map(([n, cs]) => `${esc(h.players.find((p) => p.name === n)?.pos ?? n)} ${cardsHtml(cs)}`).join(', ');
+  return lines + (shown ? `<div class="street"><b>arătat</b><span>${shown}</span></div>` : '');
 }
 
 function render() {
@@ -159,6 +170,19 @@ function render() {
       <h3>Răspunsul la 3-bet după ce Hero a deschis</h3>${T.vs3bet.total.n ? table(['Poziția lui Hero', '#Situații', 'Fold', 'Call', '4-bet'], [...T.vs3bet.byPos.map((r) => tbVs(esc(r.pos), r)), tbVs('<b>total</b>', T.vs3bet.total)]) : '<p class="few">fără cazuri</p>'}`
       : '<p class="few">fără cazuri</p>');
 
+  const RV = computeReview(hands, RANGES3);
+  state.rv = RV;
+  const rvPos = [...new Set(RV.items.map((x) => x.heroPos))];
+  sec('1d. Mâini de revăzut: ai deschis și ai primit 3-bet', 'Răspunsul tău față de graficul din Range.pdf (100 bb). „În grafic” = acțiunea ta apare cu cel puțin 20% în grafic, „rar” = 5–20%, „în afara graficului” = sub 5%. „Necomparabil” = limp înainte, call între deschidere și 3-bet sau poziții fără grafic. Graficul este orientativ.',
+    RV.items.length ? `<h3>Față de grafic</h3>${table(['Răspunsul tău', '#Situații', '#Net (bb)', '#bb/situație'], [...RV.byClass.map((r) => [esc(r.cls), nCell(r.n), bbTxt(r.net), bbTxt(r.net / r.n, 2)]), ['<b>total</b>', nCell(RV.total.n), bbTxt(RV.total.net), bbTxt(RV.total.net / RV.total.n, 2)]])}
+      <h3>Ce faci în afara graficului</h3>${table(['Răspuns', '#Comparabile', '#Rar sau în afara graficului', '#Pondere', '#Net acelor situații (bb)'], RV.byResponse.map((r) => [esc(RESPONSE_NAMES[r.response]), nCell(r.n), String(r.off), `${nf((100 * r.off) / r.n, 0)}%`, bbTxt(r.offNet)]))}
+      <h3>Lista, de la cel mai mare minus</h3>
+      <div class="filters noprint"><label>Poziție<select id="rvPos"><option value="">toate</option>${rvPos.map((p) => `<option>${esc(p)}</option>`).join('')}</select></label>
+        <label>Răspuns<select id="rvResp"><option value="">toate</option>${Object.entries(RESPONSE_NAMES).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></label>
+        <label>Față de grafic<select id="rvCls"><option value="">toate</option>${REVIEW_CLASSES.map((c) => `<option>${esc(c)}</option>`).join('')}</select></label>
+        <span class="sub" id="rvCount"></span></div>
+      <div id="rvList"></div><p class="noprint"><button type="button" id="rvMore">Arată mai multe</button></p>` : '<p class="few">fără cazuri</p>');
+
   const A = s.aggressor;
   sec('2. Ca agresor preflop', 'C-bet = Hero pariază primul pe flop, când nimeni nu a pariat înaintea lui.',
     `<h3>C-bet pe flop</h3>${propRows(A.cbet)}<h3>C-bet pe textură</h3>${propRows(A.texture)}
@@ -215,21 +239,46 @@ function render() {
     s.worst.map((h, i) => {
       const c = h.cls;
       const tags = c.sawFlop ? `${esc(c.potType)} · ${c.heroRole} · ${c.position}` : 'fără flop';
-      const ro = (t) => t.replace(/(\d)\.(\d)/g, '$1,$2'); // virgulă zecimală
-      const lines = describeHand(h).map((l) => `<div class="street"><b>${l.street}${l.pot ? ` (${ro(l.pot)})` : ''}</b><span>${l.cards ? cardsHtml(l.cards.split(' ')) + ' — ' : ''}${esc(ro(l.text))}</span></div>`).join('');
-      const shown = Object.entries(h.shown).filter(([n]) => n !== 'Hero').map(([n, cs]) => `${esc(h.players.find((p) => p.name === n)?.pos ?? n)} ${cardsHtml(cs)}`).join(', ');
       return `<details><summary><span class="amt neg">−${nf(-h.heroNetBb)} bb</span>${cardsHtml(h.heroCards)}<span>${h.heroPos}</span><span class="sub">${tags}</span>${c.sawFlop && c.headsUp ? '<span class="tag hu">heads-up pe flop</span>' : c.sawFlop ? '<span class="tag">multiway</span>' : ''}</summary>
-        ${lines}${shown ? `<div class="street"><b>arătat</b><span>${shown}</span></div>` : ''}
+        ${actionHtml(h)}
         <div class="street"><b>mâna</b><span class="sub">#${i + 1} · ${esc(h.id)} · ${day(h.date)} · ${esc(h.stakes)}${h.runs > 1 ? ` · rulată de ${h.runs} ori` : ''}</span></div></details>`;
     }).join('') || '<p class="few">nicio mână pierdută</p>');
 
   $('sections').innerHTML = out.join('');
   drawChart(hands);
+  for (const [id, key] of [['rvPos', 'pos'], ['rvResp', 'resp'], ['rvCls', 'cls']]) {
+    const el = $(id);
+    if (!el) continue;
+    el.value = state.rvf[key];
+    el.addEventListener('change', () => { state.rvf[key] = el.value; state.rvf.limit = 50; drawReview(); });
+  }
+  $('rvMore')?.addEventListener('click', () => { state.rvf.limit += 100; drawReview(); });
+  drawReview();
   for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => {
     state.chartUnit = b.dataset.unit;
     for (const x of document.querySelectorAll('.seg button')) x.classList.toggle('on', x === b);
     drawChart(filtered());
   });
+}
+
+// Lista „Mâini de revăzut”: filtrată, cu cel mai mare minus primul, câte 50 (apoi încă 100 la fiecare apăsare).
+function drawReview() {
+  const box = $('rvList');
+  if (!box || !state.rv) return;
+  const f = state.rvf;
+  const list = state.rv.items.filter((x) => (!f.pos || x.heroPos === f.pos) && (!f.resp || x.response === f.resp) && (!f.cls || x.cls === f.cls)).sort((a, b) => a.net - b.net);
+  const shown = list.slice(0, f.limit);
+  const row = (x) => {
+    const c = x.chart, h = x.h;
+    const chartTxt = !c ? 'fără grafic' : c.reach === 0 ? 'nu era în range-ul de deschidere' : `grafic: fold ${nf(c.fold, 0)}% · call ${nf(c.call, 0)}% · 4-bet ${nf(c.raise, 0)}%`;
+    const tag = x.cls === 'în grafic' ? 'ok' : x.cls === 'necomparabil' ? '' : 'off';
+    return `<details><summary><span class="amt ${x.net < 0 ? 'neg' : x.net > 0 ? 'pos' : ''}">${x.net > 0 ? '+' : x.net < 0 ? '−' : ''}${nf(Math.abs(x.net))} bb</span>${cardsHtml(h.heroCards)}<span>${esc(x.label)}</span>
+      <span class="sub">${esc(x.heroPos)} contra 3-bet din ${esc(x.villainPos)} · ${esc(RESPONSE_NAMES[x.response])}</span><span class="tag ${tag}">${esc(x.cls)}</span><span class="sub">${chartTxt}</span></summary>
+      ${actionHtml(h)}<div class="street"><b>mâna</b><span class="sub">${esc(h.id)} · ${dayTxt(h.date)} · ${esc(h.stakes)}</span></div></details>`;
+  };
+  box.innerHTML = shown.map(row).join('') || '<p class="few">nicio situație în această selecție</p>';
+  $('rvCount').textContent = `${shown.length} din ${list.length}`;
+  $('rvMore').parentElement.classList.toggle('hidden', list.length <= shown.length);
 }
 
 // Desenează graficul EV și leagă indicatorul de la mouse/atingere (mâna, All-in EV, câștig).

@@ -134,6 +134,7 @@ footer { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
 </main>
 <script type="module">
 const REFERENCE = {"nota":"Repere orientative, nu rezultate de solver. Valorile sunt procente (min–max) și pot fi editate liber.","cbetFlopHU":{"eticheta":"c-bet pe flop, heads-up","min":50,"max":70},"foldVsCbetFlop":{"eticheta":"fold contra c-bet pe flop","min":40,"max":55},"wtsd":{"eticheta":"ajunge la showdown după flop","min":24,"max":30},"wsd":{"eticheta":"câștigă la showdown","min":48,"max":55}};
+const RANGES3 = {"rfi":{"UTG":{"55":38.88,"66":24.96,"77":63.7,"88":100,"99":100,"A5o":11.71,"54s":13.35,"76s":13.63,"QJo":14.89,"T9s":27.63,"K6s":31.29,"65s":36.4,"Q9s":52.38,"KTo":58.66,"K5s":62.59,"K7s":94.84,"A2s":100,"A3s":100,"A4s":100,"A5s":100,"A6s":100,"A7s":100,"K8s":100,"A8s":100,"K9s":100,"A9s":100,"TT":100,"JTs":100,"QTs":100,"KTs":100,"ATs":100,"ATo":100,"JJ":100,"QJs":100,"KJs":100,"KJo":100,"AJs":100,"AJo":100,"QQ":100,"KQs":100,"KQo":100,"AQs":100,"AQo":100,"KK":100,"AKs":100,"AKo":100,"AA":100},"HJ":{"44":12.16,"55":48.96,"66":90.98,"77":100,"88":100,"99":100,"98s":0.01,"T8s":3.02,"87s":6.1,"76s":9.76,"54s":15.19,"A8o":21.5,"QTo":38.4,"65s":40.99,"K4s":47.46,"A5o":50.13,"A9o":60.12,"Q8s":85.09,"J9s":92.82,"K5s":99.99,"A2s":100,"A3s":100,"A4s":100,"A5s":100,"K6s":100,"A6s":100,"K7s":100,"A7s":100,"K8s":100,"A8s":100,"T9s":100,"Q9s":100,"K9s":100,"A9s":100,"TT":100,"JTs":100,"QTs":100,"KTs":100,"KTo":100,"ATs":100,"ATo":100,"JJ":100,"QJs":100,"QJo":100,"KJs":100,"KJo":100,"AJs":100,"AJo":100,"QQ":100,"KQs":100,"KQo":100,"AQs":100,"AQo":100,"KK":100,"AKs":100,"AKo":100,"AA":100},"CO":{"33":0.28,"44":99.94,"55":100,"66":100,"77":100,"88":100,"99":100,"87s":7.55,"A4o":10.36,"K2s":17.19,"54s":24.69,"76s":24.97,"K9o":33.91,"65s":34.04,"J7s":44.09,"Q6s":51.09,"A7o":62.56,"Q7s":70.21,"A8o":95.61,"A2s":100,"K3s":100,"A3s":100,"K4s":100,"A4s":100,"K5s":100,"A5s":100,"A5o":100,"K6s":100,"A6s":100,"K7s":100,"A7s":100,"98s":100,"T8s":100,"J8s":100,"Q8s":100,"K8s":100,"A8s":100,"T9s":100,"J9s":100,"Q9s":100,"K9s":100,"A9s":100,"A9o":100,"TT":100,"JTs":100,"JTo":100,"QTs":100,"QTo":100,"KTs":100,"KTo":100,"ATs":100,"ATo":100,"JJ":100,"QJs":100,"QJo":100,"KJs":100,"KJo":100,"AJs":100,"AJo":100,"QQ":100,"KQs":100,"KQo":100,"AQs":100,"AQo":100,"KK":100,"AKs":100,"AKo":100,"AA":100},"BTN":{"22":73.4,"33":100,"44":100,"55":100,"66":100,"77":100,"88":100,"99":100,"96s":0.01,"A2o":16.33,"T8o":28.93,"K7o":35.93,"65s":47.31,"75s":49.38,"T6s":71.83,"K8o":89.57,"Q3s":97.68,"54s":99.96,"K2s":100,"A2s":100,"K3s":100,"A3s":100,"A3o":100,"Q4s":100,"K4s":100,"A4s":100,"A4o":100,"J5s":100,"Q5s":100,"K5s":100,"A5s":100,"A5o":100,"76s":100,"86s":100,"J6s":100,"Q6s":100,"K6s":100,"A6s":100,"A6o":100,"87s":100,"97s":100,"T7s":100,"J7s":100,"Q7s":100,"K7s":100,"A7s":100,"A7o":100,"98s":100,"T8s":100,"J8s":100,"Q8s":100,"K8s":100,"A8s":100,"A8o":100,"T9s":100,"T9o":100,"J9s":100,"J9o":100,"Q9s":100,"Q9o":100,"K9s":100,"K9o":100,"A9s":100,"A9o":100,"TT":100,"JTs":100,"JTo":100,"QTs":100,"QTo":100,"KTs":100,"KTo":100,"ATs":100,"ATo":100,"JJ":100,"QJs":100,"QJo":100,"KJs":100,"KJo":100,"AJs":100,"AJo":100,"QQ":100,"KQs":100,"KQo":100,"AQs":100,"AQo":100,"KK":100,"AKs":100,"AKo":100,"AA":100},"SB":{"22":100,"33":100,"44":100,"55":100,"66":100,"77":100,"88":100,"99":100,"53s":30.86,"T8o":39.23,"98o":46.64,"A3o":64.05,"K8o":64.97,"85s":99.76,"Q2s":100,"K2s":100,"A2s":100,"Q3s":100,"K3s":100,"A3s":100,"54s":100,"64s":100,"Q4s":100,"K4s":100,"A4s":100,"A4o":100,"65s":100,"75s":100,"J5s":100,"Q5s":100,"K5s":100,"A5s":100,"A5o":100,"76s":100,"86s":100,"96s":100,"T6s":100,"J6s":100,"Q6s":100,"K6s":100,"A6s":100,"A6o":100,"87s":100,"97s":100,"T7s":100,"J7s":100,"Q7s":100,"K7s":100,"A7s":100,"A7o":100,"98s":100,"T8s":100,"J8s":100,"Q8s":100,"K8s":100,"A8s":100,"A8o":100,"T9s":100,"T9o":100,"J9s":100,"J9o":100,"Q9s":100,"Q9o":100,"K9s":100,"K9o":100,"A9s":100,"A9o":100,"TT":100,"JTs":100,"JTo":100,"QTs":100,"QTo":100,"KTs":100,"KTo":100,"ATs":100,"ATo":100,"JJ":100,"QJs":100,"QJo":100,"KJs":100,"KJo":100,"AJs":100,"AJo":100,"QQ":100,"KQs":100,"KQo":100,"AQs":100,"AQo":100,"KK":100,"AKs":100,"AKo":100,"AA":100}},"vs3":{"UTG|BB":{"call":{"55":38.88,"66":24.96,"77":52.17,"88":48.83,"99":52.49,"76s":5.46,"54s":5.66,"KK":6.95,"65s":8.75,"JTs":16.02,"T9s":18.74,"A5s":31.34,"JJ":45.42,"AKo":53.14,"TT":59.47,"KQs":59.81,"ATs":80.41,"AJs":100,"QQ":100,"AQs":100},"raise":{"AJo":0.03,"KJs":0.19,"A6s":0.24,"KQo":0.32,"K8s":1.77,"K7s":2.95,"ATo":4.33,"A8s":10.31,"KQs":17.8,"KTs":20.82,"K9s":21.48,"A4s":25.6,"AKo":46.86,"A3s":62.64,"KK":93.05,"A2s":100,"AKs":100,"AA":100}},"UTG|SB":{"call":{"55":35.41,"66":7.9,"77":16.55,"88":41.77,"99":28.65,"A4s":0.13,"76s":0.19,"T9s":11.4,"54s":13.35,"JTs":23.11,"KJs":24.23,"65s":28,"KQs":33.07,"A5s":33.63,"ATs":38.78,"TT":50.43,"AJs":63.04,"AKo":74.06,"JJ":100,"QQ":100,"AQs":100},"raise":{"A5s":0.01,"A8s":0.01,"A6s":0.1,"K9s":22.67,"K7s":23.91,"AKo":25.94,"K6s":28.12,"K8s":28.52,"A4s":29.94,"KQs":31.47,"KJs":34.13,"KTs":49.5,"A2s":53.16,"A3s":94.94,"KK":100,"AKs":100,"AA":100}},"UTG|BTN":{"call":{"55":38.88,"66":24.96,"77":54.08,"88":64.86,"99":65,"A9s":0.01,"A8s":6.04,"54s":13.35,"76s":13.63,"QJs":13.86,"KJs":15.3,"A4s":19.47,"T9s":24.59,"A5s":24.82,"KTs":25.26,"65s":36.4,"JTs":40.72,"AJs":41.82,"AKo":47.53,"KQs":62.37,"QQ":78.24,"ATs":81.26,"JJ":84.09,"TT":96.11,"AQs":100},"raise":{"99":8.53,"A3s":0.06,"A9s":0.44,"TT":3.89,"K9s":11.7,"JJ":15.91,"ATs":18.74,"QQ":21.76,"A7s":23.49,"A8s":27.26,"KQs":37.63,"AQo":38.35,"A4s":40.55,"AKo":52.47,"AJs":58.18,"KTs":74.74,"A5s":75.18,"KJs":84.7,"KK":100,"AKs":100,"AA":100}},"UTG|CO":{"call":{"55":38.88,"66":24.96,"77":42.11,"88":61.13,"99":44.6,"KTs":10.34,"54s":13.35,"76s":13.63,"A4s":13.85,"T9s":20,"A5s":27.73,"KJs":32.87,"AJs":33.18,"65s":36.4,"ATs":46.54,"AKo":47.18,"JTs":52.96,"KQs":57.27,"QQ":72.73,"TT":83.56,"JJ":84.73,"AQs":100},"raise":{"88":3.45,"99":6.22,"K9s":5.71,"TT":8.6,"JJ":15.27,"ATs":19.14,"A8s":23.33,"A4s":24.11,"QQ":27.27,"KQs":42.73,"AQo":47.86,"AKo":52.82,"AJs":66.82,"KJs":67.13,"A5s":72.25,"KTs":89.53,"KK":100,"AKs":100,"AA":100}},"UTG|HJ":{"call":{"55":38.88,"66":24.96,"77":42.8,"88":52.13,"99":46.07,"A4s":7.31,"KTs":7.48,"54s":13.35,"76s":13.63,"T9s":19.05,"A5s":24.03,"KJs":26.64,"ATs":33.44,"AJs":35.77,"65s":36.4,"KQs":45.57,"AKo":45.6,"JTs":47.41,"TT":55.85,"QQ":73.82,"JJ":84.83,"AQs":99.98},"raise":{"88":3.96,"99":10.36,"AQs":0.02,"ATs":0.06,"K9s":1.63,"A9s":3.64,"TT":4.44,"A8s":12.24,"A4s":13.07,"JJ":15.17,"QQ":26.18,"AKo":54.4,"KQs":54.43,"AQo":54.56,"AJs":64.23,"KTs":69.4,"KJs":73.35,"A5s":75.97,"KK":100,"AKs":100,"AA":100}},"HJ|BB":{"call":{"44":12.16,"55":42.5,"66":35.75,"77":37.92,"88":63.26,"99":72.52,"76s":1.54,"65s":3.69,"A9s":3.76,"QTs":4.07,"A8s":4.35,"QJs":6.27,"A4s":6.58,"T9s":19.87,"AKo":60.68,"KJs":64.96,"TT":70.64,"QQ":76.32,"A5s":85.92,"ATs":100,"JJ":100,"AJs":100,"KQs":100,"AQs":100},"raise":{"A4s":0.01,"K9s":0.22,"K6s":0.88,"K8s":1.46,"KJo":4.25,"A3s":5.79,"A8s":8.44,"K7s":10.14,"ATo":17.98,"AQo":21.05,"QQ":23.68,"A6s":32.89,"KQo":33.79,"AKo":39.32,"A7s":49.88,"A2s":99.68,"KK":100,"AKs":100,"AA":100}},"HJ|SB":{"call":{"44":12.16,"55":34.55,"66":17.67,"77":18.95,"88":38.45,"99":42.83,"A4s":0.01,"54s":5.98,"T9s":8.02,"KJs":10.54,"A5s":16.86,"QQ":17.56,"65s":25.88,"JTs":29.13,"ATs":43.01,"AKo":43.92,"TT":61.15,"KQs":72.91,"AJs":91.94,"JJ":94.27,"AQs":100},"raise":{"AQo":0.01,"K5s":0.02,"ATs":0.1,"K8s":3,"A4s":3.07,"A9s":3.49,"JJ":5.73,"K7s":6.11,"AJo":6.39,"A5s":16.56,"A6s":22.03,"K6s":27.33,"A7s":35.61,"K9s":40.8,"A8s":43.23,"AKo":56.08,"A3s":67.16,"QQ":82.44,"KJs":89.27,"KTs":99.26,"A2s":99.79,"KK":100,"AKs":100,"AA":100}},"HJ|BTN":{"call":{"44":12.16,"55":48.93,"66":34.16,"77":60.41,"88":88.9,"99":89.87,"T8s":3.01,"A9s":5.16,"AQo":5.59,"87s":6.1,"QTs":6.77,"A4s":8.4,"76s":9.76,"A8s":10.35,"54s":15.19,"QQ":21.85,"A5s":33,"QJs":39.95,"T9s":40.05,"KTs":40.6,"65s":40.99,"JTs":47.95,"AKo":50.44,"ATs":55.4,"AJs":71.14,"JJ":75.2,"KQs":85.18,"TT":91.44,"AQs":100},"raise":{"88":11.1,"99":10.13,"A9s":0.02,"KJo":0.04,"K5s":0.73,"K6s":7.4,"A8s":8.13,"TT":8.56,"KQo":9.59,"KQs":14.82,"JJ":24.8,"AJs":28.86,"A7s":33.94,"ATs":44.6,"AKo":49.56,"KTs":59.4,"A4s":63.98,"A5s":67,"K9s":67.76,"QQ":78.15,"AQo":89.93,"KJs":100,"KK":100,"AKs":100,"AA":100}},"HJ|CO":{"call":{"44":12.16,"55":45.26,"66":31.08,"77":59.35,"88":76.16,"99":71.64,"A5s":1.61,"T8s":3.02,"87s":6.1,"76s":9.76,"J9s":13.83,"54s":15.19,"QJs":16.47,"KTs":24.21,"T9s":29.33,"QQ":31.85,"A4s":39.19,"65s":40.99,"AJs":44.42,"AKo":53.51,"JJ":71.12,"ATs":71.27,"KQs":71.39,"JTs":73.29,"TT":96.76,"AQs":100},"raise":{"77":2.4,"88":2.86,"99":9.56,"KJo":0.12,"K5s":0.53,"K7s":0.7,"A7s":2.34,"TT":3.24,"K6s":20.01,"A8s":22.7,"K9s":28.22,"KQs":28.61,"ATs":28.73,"JJ":28.88,"A4s":42.78,"AKo":46.49,"AJs":55.58,"QQ":68.15,"KTs":75.79,"AQo":80.13,"A5s":98.39,"KJs":100,"KK":100,"AKs":100,"AA":100}},"CO|BB":{"call":{"33":0.25,"44":61.3,"55":33.67,"66":41.72,"77":53.91,"88":72.68,"99":89.95,"98s":0.01,"T9s":0.16,"76s":7.69,"JTs":10.45,"A4s":10.77,"A7s":13.65,"A8s":17.11,"QTs":27.5,"AKo":36.54,"AQo":43.62,"KTs":51.54,"A9s":52.73,"A5s":72.9,"QJs":76.94,"TT":100,"ATs":100,"JJ":100,"KJs":100,"AJs":100,"KQs":100,"AQs":100},"raise":{"AJo":0.01,"K6s":0.02,"K7s":0.03,"KTs":0.03,"K4s":0.41,"ATo":2.62,"A9o":3.48,"A7o":4.04,"A4o":6.62,"A8s":7.43,"KTo":12.76,"A5o":13.03,"A8o":13.7,"KJo":23.01,"K3s":26.52,"A3s":30.27,"A2s":41.84,"AQo":44.39,"AKo":63.46,"A6s":72.43,"A7s":73.76,"QQ":100,"KK":100,"AKs":100,"AA":100}},"CO|SB":{"call":{"33":0.24,"44":28.61,"55":42.56,"66":31.97,"77":38.71,"88":54.99,"99":65.29,"54s":2.59,"65s":2.9,"QTs":8.71,"KTs":14.24,"T9s":17.83,"AKo":18.79,"JJ":24.55,"A5s":25.39,"JTs":31.14,"AQo":35.74,"ATs":36.75,"KJs":44.24,"TT":100,"AJs":100,"KQs":100,"AQs":100},"raise":{"K4s":0.03,"K5s":2.57,"KTo":2.95,"K8s":4.13,"K6s":5.12,"ATo":5.7,"A4s":8.47,"K7s":10.32,"A5o":13.22,"AQo":19.24,"A9s":20.35,"A5s":23.67,"KQo":35.39,"ATs":48.1,"A2s":51.85,"A6s":61.34,"A7s":67.15,"A8s":71.06,"K9s":72.82,"JJ":75.45,"AKo":81.21,"KTs":85.76,"QQ":100,"KK":100,"AKs":100,"AA":100}},"CO|BTN":{"call":{"33":0.28,"44":76.24,"55":33.11,"66":46.02,"77":93.52,"88":82.13,"99":90.61,"87s":7.55,"A4s":8.59,"T8s":9.72,"QJs":13.69,"JJ":19.88,"AKo":19.88,"AQo":20.05,"KJs":23.89,"54s":24.69,"76s":24.97,"KTs":25.93,"A8s":32.74,"65s":34.04,"A9s":34.7,"ATs":35.25,"A5s":35.66,"T9s":39.85,"QTs":49.95,"TT":58.33,"JTs":80.64,"AJs":100,"KQs":100,"AQs":100},"raise":{"55":13.78,"66":6.46,"77":6.48,"88":17.87,"99":9.39,"A3s":0.02,"K5s":0.04,"K6s":0.04,"A9s":1.09,"JTs":6.94,"AJo":26.07,"A6s":29.95,"A8s":34.16,"KQo":35.61,"A7s":41.15,"TT":41.67,"A5s":64.34,"ATs":64.75,"KTs":74.07,"KJs":76.11,"K9s":79.73,"AQo":79.95,"JJ":80.12,"AKo":80.12,"A4s":89.49,"QQ":100,"KK":100,"AKs":100,"AA":100}},"BTN|BB":{"call":{"22":0.01,"33":30.64,"44":44.34,"55":66.95,"66":99.97,"77":100,"88":100,"99":100,"A3s":1.73,"87s":2.21,"KJo":16.62,"KQo":16.89,"AJo":21.12,"76s":21.24,"A7s":22.68,"J9s":23.55,"A4s":48.16,"T9s":48.25,"K9s":55.89,"AQo":83.06,"TT":83.38,"AQs":99.93,"A5s":100,"A8s":100,"A9s":100,"JTs":100,"QTs":100,"KTs":100,"ATs":100,"QJs":100,"KJs":100,"AJs":100,"KQs":100},"raise":{"A4o":0.02,"K3s":0.07,"AQs":0.07,"A7s":0.3,"A9o":0.38,"ATo":2.21,"KJo":3.05,"A3s":8.21,"TT":16.62,"AQo":16.94,"K2s":18.85,"A5o":18.99,"A7o":23.28,"A3o":29.41,"A8o":35.24,"AJo":35.75,"A6s":44.61,"KQo":83.11,"A2s":91.14,"JJ":100,"QQ":100,"KK":100,"AKs":100,"AKo":100,"AA":100}},"BTN|SB":{"call":{"33":3.97,"44":51.02,"55":56.14,"66":50.01,"77":100,"88":100,"99":100,"76s":0.01,"KQo":0.01,"A4s":0.19,"54s":1.67,"AJo":13.54,"T9s":19.53,"TT":19.65,"QTs":22.78,"65s":23.36,"98s":26.52,"A9s":37.83,"JTs":48.6,"A5s":59.23,"QJs":73.92,"AQo":77.39,"AQs":84.3,"KTs":99.97,"ATs":100,"KJs":100,"AJs":100,"KQs":100},"raise":{"QJo":0.02,"Q9s":0.26,"KJo":0.38,"QTs":7.2,"QJs":8.79,"AQs":15.7,"AQo":22.61,"A9s":35.41,"A5s":40.76,"K9s":45.46,"AJo":46.98,"A4s":57.65,"A7s":65.38,"A6s":78.19,"TT":80.35,"A8s":81.6,"A3s":83.47,"KQo":99.99,"JJ":100,"QQ":100,"KK":100,"AKs":100,"AKo":100,"AA":100}},"SB|BB":{"call":{"55":78.57,"66":89.28,"77":100,"88":100,"99":90.15,"A3s":0.01,"KQo":0.38,"A6s":5.24,"KJo":12.08,"AQo":30.09,"AJo":31.03,"K8s":47.63,"Q9s":61.96,"J9s":65.37,"T9s":92.28,"A4s":99.09,"A5s":100,"A7s":100,"A8s":100,"K9s":100,"A9s":100,"JTs":100,"QTs":100,"KTs":100,"ATs":100,"QJs":100,"KJs":100,"AJs":100,"KQs":100},"raise":{"99":9.85,"Q9s":0.01,"K5s":0.07,"A4s":0.91,"KTo":0.94,"A9o":2.13,"A4o":6.85,"A7o":7.32,"QTo":13.06,"A5o":24.75,"QJo":48.79,"A6s":53.12,"KJo":62.77,"AJo":68.97,"AQo":69.91,"KQo":99.62,"TT":100,"ATo":100,"JJ":100,"QQ":100,"AQs":100,"KK":100,"AKs":100,"AKo":100,"AA":100}}}};
 // ---- hands.js
 // Parser pentru hand history GG Poker (cash, Hold'em No Limit). Sumele sunt ținute în cenți (întregi).
 
@@ -944,6 +945,84 @@ function computeThreeBet(hands) {
   };
 }
 
+// ---- chart3bet.js
+// Graficul din Range.pdf (data/ranges.json) pentru „Hero a deschis și a primit 3-bet”: ce frecvență are fiecare acțiune pentru o mână.
+// Greutățile sunt procente absolute pe clasă de mână; frecvența la decizie = 100 × pondere acțiune / reach, unde reach este
+// ponderea mâinii în range-ul de deschidere. Graficele sunt pentru 100 bb.
+
+// Păstrează doar ce trebuie paginii: range-urile de deschidere și răspunsurile la 3-bet, pe perechea (Hero, cel care dă 3-bet).
+function compactRanges(raw) {
+  const R = raw.ranges, rfi = {}, vs3 = {};
+  for (const s of raw.scenarios) if (s.category === 'RFI') rfi[s.hero] = { ...R[s.actions[0].range].classes };
+  for (const s of raw.scenarios) {
+    if (s.category !== 'Vs 3-bet / 4-bet' || s.status !== 'ok') continue;
+    const m = /^(\w+) vs (\w+) 3Bet$/.exec(s.title);
+    if (!m) continue;
+    const range = (k) => ({ ...(R[s.actions.find((a) => a.key === k)?.range]?.classes ?? {}) });
+    vs3[`${m[1]}|${m[2]}`] = { call: range('call'), raise: range('raise') };
+  }
+  return { rfi, vs3 };
+}
+
+// label: clasa mâinii (AKs, QJo, 99). Întoarce null dacă nu există grafic pentru perechea de poziții;
+// { reach: 0 } dacă mâna nu era în range-ul de deschidere; altfel frecvențele în % (fold + call + raise = 100).
+function chartDecision(data, heroPos, villainPos, label) {
+  const sc = data.vs3[`${heroPos}|${villainPos}`], open = data.rfi[heroPos];
+  if (!sc || !open) return null;
+  const reach = open[label] ?? 0;
+  if (reach <= 0) return { reach: 0, call: 0, raise: 0, fold: 0 };
+  const call = Math.min(100, (100 * (sc.call[label] ?? 0)) / reach);
+  const raise = Math.min(100 - call, (100 * (sc.raise[label] ?? 0)) / reach);
+  return { reach, call, raise, fold: Math.max(0, 100 - call - raise) };
+}
+
+// ---- review.js
+// „Mâini de revăzut”: situațiile în care Hero a deschis și a primit 3-bet, comparate cu graficul din Range.pdf.
+
+
+
+const REVIEW_CLASSES = ['în grafic', 'rar în grafic', 'în afara graficului', 'deschis în afara graficului', 'necomparabil'];
+const RESPONSE_NAMES = { fold: 'fold', call: 'call', raise: '4-bet' };
+
+// Ce a făcut Hero la primul 3-bet după ce a deschis; null dacă mâna nu are o astfel de situație.
+function facing(h) {
+  const acts = h.streets.preflop, i0 = acts.findIndex((a) => a.type === 'raise');
+  if (i0 < 0 || acts[i0].player !== 'Hero') return null;
+  const j = acts.findIndex((a, i) => i > i0 && a.type === 'raise' && a.player !== 'Hero');
+  if (j < 0) return null;
+  const resp = acts.find((a, i) => i > j && a.player === 'Hero' && a.type !== 'post');
+  if (!resp) return null;
+  // limp înaintea deschiderii sau call între deschidere și 3-bet: nu mai este „deschidere simplă contra 3-bet” din grafic
+  const clean = !acts.slice(0, i0).some((a) => a.type === 'call') && !acts.slice(i0 + 1, j).some((a) => a.type === 'call');
+  return { villainPos: acts[j].pos, response: resp.type, clean };
+}
+
+function classifyResponse(chart, response) {
+  const f = chart[response === 'raise' ? 'raise' : response];
+  return f >= 20 ? 'în grafic' : f >= 5 ? 'rar în grafic' : 'în afara graficului';
+}
+
+function computeReview(hands, data) {
+  const items = [];
+  for (const h of hands) {
+    const f = facing(h);
+    if (!f) continue;
+    const label = handLabel(h.heroCards);
+    const chart = f.clean ? chartDecision(data, h.heroPos, f.villainPos, label) : null;
+    const cls = !chart ? 'necomparabil' : chart.reach === 0 ? 'deschis în afara graficului' : classifyResponse(chart, f.response);
+    items.push({ h, label, heroPos: h.heroPos, villainPos: f.villainPos, response: f.response, chart, cls, net: h.heroNetBb });
+  }
+  const group = (list) => ({ n: list.length, net: list.reduce((s, x) => s + x.net, 0) });
+  const byClass = REVIEW_CLASSES.map((cls) => ({ cls, ...group(items.filter((x) => x.cls === cls)) })).filter((r) => r.n);
+  const comparable = items.filter((x) => x.cls !== 'necomparabil');
+  const off = (x) => x.cls === 'rar în grafic' || x.cls === 'în afara graficului';
+  const byResponse = ['fold', 'call', 'raise'].map((response) => {
+    const l = comparable.filter((x) => x.response === response), o = l.filter(off);
+    return { response, n: l.length, off: o.length, offNet: o.reduce((s, x) => s + x.net, 0), offNetCall: group(o) };
+  }).filter((r) => r.n);
+  return { items, byClass, byResponse, total: group(items), comparable: comparable.length };
+}
+
 // ---- graph.js
 // Graficul „All-in EV” vs. „Câștig/pierdere”, ca în PokerTracker: sume cumulate pe mâini, în ordine cronologică.
 // Linia EV = rezultatul real minus norocul cumulat de la all-in-urile cu cărți vizibile.
@@ -1105,6 +1184,7 @@ async function createHandStore(backend) {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const nf = (x, d = 1) => x.toLocaleString('ro-RO', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -1117,7 +1197,7 @@ const nCell = (n) => `${n.toLocaleString('ro-RO')}${smallTag(n)}`;
 const usdTxt = (x) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 2)} $</span>`;
 const ciTxt = (c) => (c.lo == null ? '–' : `<span class="ci">IC 95%: ${c.lo < 0 ? '−' : '+'}${nf(Math.abs(c.lo))} … ${c.hi < 0 ? '−' : '+'}${nf(Math.abs(c.hi))}</span>`);
 
-const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null, chartUnit: 'bb' };
+const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null, chartUnit: 'bb', rv: null, rvf: { pos: '', resp: '', cls: '', limit: 50 } };
 
 // Procent cu n și interval de încredere; sub pragul minim nu se colorează și nu se compară cu reperul.
 function pctCell(p, refKey) {
@@ -1172,6 +1252,16 @@ function renderStatus() {
   if (tbN) html += `<p class="sub" style="margin-top:10px">„Time bank card”: ${tbN} ${tbN === 1 ? 'mână' : 'mâini'}, ${(tb / 100).toFixed(2)} $ în afara potului, neinclus în rezultate.</p>`;
   $('status').innerHTML = html;
   $('status').classList.remove('hidden');
+}
+
+const dayTxt = (d) => (d ? d.slice(0, 10).split('-').reverse().join('.') : '–');
+
+// Acțiunea completă a unei mâini (pe străzi, cu cărțile arătate), pentru listele care se deschid la atingere.
+function actionHtml(h) {
+  const ro = (t) => t.replace(/(\d)\.(\d)/g, '$1,$2'); // virgulă zecimală
+  const lines = describeHand(h).map((l) => `<div class="street"><b>${l.street}${l.pot ? ` (${ro(l.pot)})` : ''}</b><span>${l.cards ? cardsHtml(l.cards.split(' ')) + ' — ' : ''}${esc(ro(l.text))}</span></div>`).join('');
+  const shown = Object.entries(h.shown).filter(([n]) => n !== 'Hero').map(([n, cs]) => `${esc(h.players.find((p) => p.name === n)?.pos ?? n)} ${cardsHtml(cs)}`).join(', ');
+  return lines + (shown ? `<div class="street"><b>arătat</b><span>${shown}</span></div>` : '');
 }
 
 function render() {
@@ -1255,6 +1345,19 @@ function render() {
       <h3>Răspunsul la 3-bet după ce Hero a deschis</h3>${T.vs3bet.total.n ? table(['Poziția lui Hero', '#Situații', 'Fold', 'Call', '4-bet'], [...T.vs3bet.byPos.map((r) => tbVs(esc(r.pos), r)), tbVs('<b>total</b>', T.vs3bet.total)]) : '<p class="few">fără cazuri</p>'}`
       : '<p class="few">fără cazuri</p>');
 
+  const RV = computeReview(hands, RANGES3);
+  state.rv = RV;
+  const rvPos = [...new Set(RV.items.map((x) => x.heroPos))];
+  sec('1d. Mâini de revăzut: ai deschis și ai primit 3-bet', 'Răspunsul tău față de graficul din Range.pdf (100 bb). „În grafic” = acțiunea ta apare cu cel puțin 20% în grafic, „rar” = 5–20%, „în afara graficului” = sub 5%. „Necomparabil” = limp înainte, call între deschidere și 3-bet sau poziții fără grafic. Graficul este orientativ.',
+    RV.items.length ? `<h3>Față de grafic</h3>${table(['Răspunsul tău', '#Situații', '#Net (bb)', '#bb/situație'], [...RV.byClass.map((r) => [esc(r.cls), nCell(r.n), bbTxt(r.net), bbTxt(r.net / r.n, 2)]), ['<b>total</b>', nCell(RV.total.n), bbTxt(RV.total.net), bbTxt(RV.total.net / RV.total.n, 2)]])}
+      <h3>Ce faci în afara graficului</h3>${table(['Răspuns', '#Comparabile', '#Rar sau în afara graficului', '#Pondere', '#Net acelor situații (bb)'], RV.byResponse.map((r) => [esc(RESPONSE_NAMES[r.response]), nCell(r.n), String(r.off), `${nf((100 * r.off) / r.n, 0)}%`, bbTxt(r.offNet)]))}
+      <h3>Lista, de la cel mai mare minus</h3>
+      <div class="filters noprint"><label>Poziție<select id="rvPos"><option value="">toate</option>${rvPos.map((p) => `<option>${esc(p)}</option>`).join('')}</select></label>
+        <label>Răspuns<select id="rvResp"><option value="">toate</option>${Object.entries(RESPONSE_NAMES).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></label>
+        <label>Față de grafic<select id="rvCls"><option value="">toate</option>${REVIEW_CLASSES.map((c) => `<option>${esc(c)}</option>`).join('')}</select></label>
+        <span class="sub" id="rvCount"></span></div>
+      <div id="rvList"></div><p class="noprint"><button type="button" id="rvMore">Arată mai multe</button></p>` : '<p class="few">fără cazuri</p>');
+
   const A = s.aggressor;
   sec('2. Ca agresor preflop', 'C-bet = Hero pariază primul pe flop, când nimeni nu a pariat înaintea lui.',
     `<h3>C-bet pe flop</h3>${propRows(A.cbet)}<h3>C-bet pe textură</h3>${propRows(A.texture)}
@@ -1311,21 +1414,46 @@ function render() {
     s.worst.map((h, i) => {
       const c = h.cls;
       const tags = c.sawFlop ? `${esc(c.potType)} · ${c.heroRole} · ${c.position}` : 'fără flop';
-      const ro = (t) => t.replace(/(\d)\.(\d)/g, '$1,$2'); // virgulă zecimală
-      const lines = describeHand(h).map((l) => `<div class="street"><b>${l.street}${l.pot ? ` (${ro(l.pot)})` : ''}</b><span>${l.cards ? cardsHtml(l.cards.split(' ')) + ' — ' : ''}${esc(ro(l.text))}</span></div>`).join('');
-      const shown = Object.entries(h.shown).filter(([n]) => n !== 'Hero').map(([n, cs]) => `${esc(h.players.find((p) => p.name === n)?.pos ?? n)} ${cardsHtml(cs)}`).join(', ');
       return `<details><summary><span class="amt neg">−${nf(-h.heroNetBb)} bb</span>${cardsHtml(h.heroCards)}<span>${h.heroPos}</span><span class="sub">${tags}</span>${c.sawFlop && c.headsUp ? '<span class="tag hu">heads-up pe flop</span>' : c.sawFlop ? '<span class="tag">multiway</span>' : ''}</summary>
-        ${lines}${shown ? `<div class="street"><b>arătat</b><span>${shown}</span></div>` : ''}
+        ${actionHtml(h)}
         <div class="street"><b>mâna</b><span class="sub">#${i + 1} · ${esc(h.id)} · ${day(h.date)} · ${esc(h.stakes)}${h.runs > 1 ? ` · rulată de ${h.runs} ori` : ''}</span></div></details>`;
     }).join('') || '<p class="few">nicio mână pierdută</p>');
 
   $('sections').innerHTML = out.join('');
   drawChart(hands);
+  for (const [id, key] of [['rvPos', 'pos'], ['rvResp', 'resp'], ['rvCls', 'cls']]) {
+    const el = $(id);
+    if (!el) continue;
+    el.value = state.rvf[key];
+    el.addEventListener('change', () => { state.rvf[key] = el.value; state.rvf.limit = 50; drawReview(); });
+  }
+  $('rvMore')?.addEventListener('click', () => { state.rvf.limit += 100; drawReview(); });
+  drawReview();
   for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => {
     state.chartUnit = b.dataset.unit;
     for (const x of document.querySelectorAll('.seg button')) x.classList.toggle('on', x === b);
     drawChart(filtered());
   });
+}
+
+// Lista „Mâini de revăzut”: filtrată, cu cel mai mare minus primul, câte 50 (apoi încă 100 la fiecare apăsare).
+function drawReview() {
+  const box = $('rvList');
+  if (!box || !state.rv) return;
+  const f = state.rvf;
+  const list = state.rv.items.filter((x) => (!f.pos || x.heroPos === f.pos) && (!f.resp || x.response === f.resp) && (!f.cls || x.cls === f.cls)).sort((a, b) => a.net - b.net);
+  const shown = list.slice(0, f.limit);
+  const row = (x) => {
+    const c = x.chart, h = x.h;
+    const chartTxt = !c ? 'fără grafic' : c.reach === 0 ? 'nu era în range-ul de deschidere' : `grafic: fold ${nf(c.fold, 0)}% · call ${nf(c.call, 0)}% · 4-bet ${nf(c.raise, 0)}%`;
+    const tag = x.cls === 'în grafic' ? 'ok' : x.cls === 'necomparabil' ? '' : 'off';
+    return `<details><summary><span class="amt ${x.net < 0 ? 'neg' : x.net > 0 ? 'pos' : ''}">${x.net > 0 ? '+' : x.net < 0 ? '−' : ''}${nf(Math.abs(x.net))} bb</span>${cardsHtml(h.heroCards)}<span>${esc(x.label)}</span>
+      <span class="sub">${esc(x.heroPos)} contra 3-bet din ${esc(x.villainPos)} · ${esc(RESPONSE_NAMES[x.response])}</span><span class="tag ${tag}">${esc(x.cls)}</span><span class="sub">${chartTxt}</span></summary>
+      ${actionHtml(h)}<div class="street"><b>mâna</b><span class="sub">${esc(h.id)} · ${dayTxt(h.date)} · ${esc(h.stakes)}</span></div></details>`;
+  };
+  box.innerHTML = shown.map(row).join('') || '<p class="few">nicio situație în această selecție</p>';
+  $('rvCount').textContent = `${shown.length} din ${list.length}`;
+  $('rvMore').parentElement.classList.toggle('hidden', list.length <= shown.length);
 }
 
 // Desenează graficul EV și leagă indicatorul de la mouse/atingere (mâna, All-in EV, câștig).

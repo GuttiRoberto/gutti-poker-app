@@ -1,0 +1,31 @@
+Poker Hand #RCTEST3B: Hold'em No Limit ($0.01/$0.02) - 2026/09/06 12:00:00
+Table 'RushAndCash9' 6-max Seat #6 is the button
+Seat 1: sbplayer ($2 in chips)
+Seat 2: bbplayer ($2 in chips)
+Seat 3: utgplayer ($2 in chips)
+Seat 4: hjplayer ($2 in chips)
+Seat 5: coplayer ($2 in chips)
+Seat 6: Hero ($2 in chips)
+sbplayer: posts small blind $0.01
+bbplayer: posts big blind $0.02
+*** HOLE CARDS ***
+Dealt to sbplayer 
+Dealt to bbplayer 
+Dealt to utgplayer 
+Dealt to hjplayer 
+Dealt to coplayer 
+Dealt to Hero [Ah Jd]
+utgplayer: folds
+hjplayer: folds
+coplayer: folds
+Hero: raises $0.03 to $0.05
+sbplayer: raises $0.14 to $0.15
+bbplayer: folds
+Hero: folds
+Uncalled bet ($0.10) returned to sbplayer
+*** SHOWDOWN ***
+sbplayer collected $0.12 from pot
+*** SUMMARY ***
+Total pot $0.12 | Rake $0 | Jackpot $0 | Bingo $0 | Fortune $0 | Tax $0
+Seat 1: sbplayer (small blind) collected ($0.12)
+Seat 6: Hero (button) folded before Flop

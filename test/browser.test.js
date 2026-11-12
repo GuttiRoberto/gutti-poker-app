@@ -75,6 +75,13 @@ test('pagina: încărcare, duplicate, fără păstrare între vizite', { skip: c
     await page.waitForSelector('#evTip:not(.hidden)');
     assert.match(await page.innerText('#evTip'), /All-in EV[\s\S]*Câștig\/pierdere/);
 
+    // 2b. Mâini de revăzut: secțiunea există, filtrele și lista se desenează fără erori
+    assert.match(await page.innerText('#sections'), /1d\. Mâini de revăzut/);
+    assert.ok(await page.locator('#rvList').count() === 1);
+    await page.selectOption('#rvResp', 'fold');
+    await page.selectOption('#rvResp', '');
+    assert.match(await page.innerText('#rvCount'), /\d/);
+
     // 3. același fișier încă o dată: nimic nou
     await page.setInputFiles('#file', [txt('toate.txt', hands)]);
     await page.waitForFunction(() => document.getElementById('kDup')?.textContent.trim() === '20');
