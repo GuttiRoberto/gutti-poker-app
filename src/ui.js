@@ -4,6 +4,7 @@ import { classify } from './classify.js';
 import { computeStats, describeHand } from './stats.js';
 import { readZipTexts } from './zip.js';
 import { computeBreakdowns, SMALL_SAMPLE } from './breakdowns.js';
+import { splitRawHands, openBrowserStore } from './store.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -17,7 +18,7 @@ const nCell = (n) => `${n.toLocaleString('ro-RO')}${smallTag(n)}`;
 const usdTxt = (x) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 2)} $</span>`;
 const ciTxt = (c) => (c.lo == null ? '–' : `<span class="ci">IC 95%: ${c.lo < 0 ? '−' : '+'}${nf(Math.abs(c.lo))} … ${c.hi < 0 ? '−' : '+'}${nf(Math.abs(c.hi))}</span>`);
 
-const state = { hands: [], seen: new Set(), rejected: [], duplicates: 0, unknown: {}, files: 0, total: 0 };
+const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, store: null, last: null };
 
 // Procent cu n și interval de încredere; sub pragul minim nu se colorează și nu se compară cu reperul.
 function pctCell(p, refKey) {
@@ -52,11 +53,17 @@ function renderStatus() {
   const unknown = Object.entries(state.unknown).sort((a, b) => b[1] - a[1]);
   const reasons = {};
   for (const r of state.rejected) { const k = r.reason.replace(/\(.*\)/, '').trim(); reasons[k] = (reasons[k] ?? 0) + 1; }
-  let html = `<h2>Ce s-a citit</h2><div class="kpis">
-    <div class="kpi"><b>${state.hands.length.toLocaleString('ro-RO')}</b><span>mâini citite din ${state.files} fișiere</span></div>
+  const L = state.last;
+  let html = `<h2>Mâini încărcate</h2><div class="kpis">
+    <div class="kpi"><b id="kHands">${state.hands.length.toLocaleString('ro-RO')}</b><span>mâini în raport</span></div>
+    <div class="kpi"><b id="kNew">${L ? L.added.toLocaleString('ro-RO') : '–'}</b><span>mâini noi la ultima încărcare${L ? ` (${L.files} ${L.files === 1 ? 'fișier' : 'fișiere'})` : ''}</span></div>
+    <div class="kpi"><b id="kDup">${L ? L.duplicates.toLocaleString('ro-RO') : '–'}</b><span>duplicate ignorate (același ID)</span></div>
     <div class="kpi"><b>${state.rejected.length}</b><span>mâini respinse</span></div>
-    <div class="kpi"><b>${state.duplicates}</b><span>dubluri eliminate</span></div>
-    <div class="kpi"><b>${unknown.reduce((s, u) => s + u[1], 0)}</b><span>linii necunoscute</span></div></div>`;
+    <div class="kpi"><b>${unknown.reduce((s, u) => s + u[1], 0)}</b><span>linii necunoscute</span></div></div>
+    <p class="sub" style="margin-top:10px">${state.store?.persistent
+    ? 'Mâinile sunt păstrate în acest browser, pe acest dispozitiv. La următoarea vizită adaugi doar fișierele noi.'
+    : 'Acest browser nu permite păstrarea mâinilor; ele rămân doar până închizi pagina.'}
+    <button id="wipe" type="button" style="margin-left:8px">Șterge tot</button></p>`;
   if (state.rejected.length) html += `<div class="note"><b>Mâini respinse:</b><ul class="plain">${Object.entries(reasons).map(([k, v]) => `<li>${esc(k)}: ${v}</li>`).join('')}</ul>
     <details><summary>Lista (${state.rejected.length})</summary><ul class="plain">${state.rejected.slice(0, 200).map((r) => `<li>${esc(r.id)} — ${esc(r.reason)}</li>`).join('')}</ul></details></div>`;
   if (unknown.length) html += `<div class="note"><b>Linii care nu se potrivesc cu nimic cunoscut</b> (mâinile respective au fost păstrate dacă potul se verifică):<ul class="plain">${unknown.slice(0, 30).map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul></div>`;
@@ -176,27 +183,54 @@ function render() {
   $('sections').innerHTML = out.join('');
 }
 
-async function addFiles(files) {
-  $('busy').textContent = 'Se citesc fișierele…';
-  for (const f of files) {
-    try {
-      const texts = /\.zip$/i.test(f.name) ? await readZipTexts(await f.arrayBuffer()) : [{ name: f.name, text: await f.text() }];
-      for (const t of texts) {
-        const r = parseHands(t.text, state.seen);
-        for (const h of r.hands) h.cls = classify(h);
-        state.hands.push(...r.hands); state.rejected.push(...r.rejected); state.duplicates += r.duplicates; state.total += r.total; state.files++;
-        for (const [k, v] of Object.entries(r.unknownLines)) state.unknown[k] = (state.unknown[k] ?? 0) + v;
-      }
-    } catch (e) {
-      state.rejected.push({ id: f.name, reason: `fișier necitit: ${e.message}` });
-    }
-  }
-  $('busy').textContent = '';
+// Trece prin parser înregistrările brute (noi sau citite din browser) și le adaugă în raport.
+function ingest(records) {
+  if (!records.length) return;
+  const r = parseHands(records.map((x) => x.text).join('\n\n'), state.seen);
+  for (const h of r.hands) h.cls = classify(h);
+  state.hands.push(...r.hands); state.rejected.push(...r.rejected);
+  for (const [k, v] of Object.entries(r.unknownLines)) state.unknown[k] = (state.unknown[k] ?? 0) + v;
+}
+
+function refresh() {
   const stakes = [...new Set(state.hands.map((h) => h.stakes))].sort();
   const cur = $('fStake').value;
   $('fStake').innerHTML = '<option value="">toate mizele</option>' + stakes.map((s) => `<option value="${esc(s)}">${esc(s)} $</option>`).join('');
   $('fStake').value = stakes.includes(cur) ? cur : '';
   renderStatus();
+  $('wipe').addEventListener('click', wipe);
+  render();
+}
+
+async function addFiles(files) {
+  if (!files.length) return;
+  await state.ready;
+  $('busy').textContent = 'Se citesc fișierele…';
+  const last = { files: 0, added: 0, duplicates: 0 };
+  for (const f of files) {
+    try {
+      const texts = /\.zip$/i.test(f.name) ? await readZipTexts(await f.arrayBuffer()) : [{ name: f.name, text: await f.text() }];
+      for (const t of texts) {
+        const { records, stray } = splitRawHands(t.text);
+        for (const sample of stray) state.rejected.push({ id: '?', reason: 'text în afara unei mâini', sample });
+        const res = await state.store.add(records);
+        ingest(res.added);
+        last.files++; last.added += res.added.length; last.duplicates += res.duplicates;
+      }
+    } catch (e) {
+      state.rejected.push({ id: f.name, reason: `fișier necitit: ${e.message}` });
+    }
+  }
+  state.last = last;
+  $('busy').textContent = '';
+  refresh();
+}
+
+async function wipe() {
+  if (!confirm('Ștergi toate mâinile păstrate în acest browser?')) return;
+  await state.store.clear();
+  Object.assign(state, { hands: [], seen: new Set(), rejected: [], unknown: {}, last: null });
+  $('status').classList.add('hidden');
   render();
 }
 
@@ -211,6 +245,14 @@ function initUi() {
   for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).addEventListener('change', render);
   $('reset').addEventListener('click', () => { for (const id of ['fStake', 'fFrom', 'fTo', 'fPlayers']) $(id).value = ''; render(); });
   $('ref').innerHTML = Object.values(REFERENCE).filter((r) => r.eticheta).map((r) => `<li>${esc(r.eticheta)}: ${r.min}–${r.max}%</li>`).join('');
-  window.__addFiles = addFiles; // pentru verificări automate
+  // la deschidere: mâinile păstrate din vizitele anterioare intră direct în raport
+  state.ready = (async () => {
+    let idb = null;
+    try { idb = globalThis.indexedDB ?? null; } catch { /* acces blocat */ }
+    state.store = await openBrowserStore(idb);
+    const saved = await state.store.all();
+    if (saved.length) { $('busy').textContent = 'Se încarcă mâinile păstrate…'; ingest(saved); $('busy').textContent = ''; refresh(); }
+    document.body.dataset.ready = '1';
+  })();
 }
 initUi();

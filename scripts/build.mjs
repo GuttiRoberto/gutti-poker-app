@@ -6,7 +6,7 @@ import { join } from 'node:path';
 const src = (f) => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
 const strip = (code) => code.replace(/^import .*$/gm, '').replace(/^export /gm, '');
 const js = [`const REFERENCE = ${JSON.stringify(JSON.parse(src('reference.json')))};`,
-  ...['hands.js', 'classify.js', 'stats.js', 'breakdowns.js', 'zip.js', 'ui.js'].map((f) => `// ---- ${f}\n${strip(src(f))}`)].join('\n');
+  ...['hands.js', 'classify.js', 'stats.js', 'breakdowns.js', 'zip.js', 'store.js', 'ui.js'].map((f) => `// ---- ${f}\n${strip(src(f))}`)].join('\n');
 if (/<\/script/i.test(js)) throw new Error('codul conține </script');
 // modulele sunt lipite într-un singur script: verifică sintaxa (prinde nume declarate de două ori)
 const tmp = join(tmpdir(), `analizor-check-${process.pid}.mjs`);
@@ -24,10 +24,11 @@ ${src('page.css')}</style>
 <body>
 <main>
   <h1>Analizor de leak-uri postflop</h1>
-  <p class="sub">Mâini de cash de pe GG Poker (Hold'em No Limit). Totul se prelucrează local, în acest browser; nimic nu se trimite nicăieri.</p>
+  <p class="sub">Mâini de cash de pe GG Poker (Hold'em No Limit). Totul se prelucrează local, în acest browser; fișierele nu sunt trimise nicăieri.</p>
   <div id="drop" role="button" tabindex="0" aria-label="Alege fișiere cu mâini">
     <strong>Trage aici fișierele .txt sau .zip</strong>
-    <span class="sub">sau atinge pentru a le alege · poți adăuga mai multe pe rând</span>
+    <span class="sub">mai multe deodată · hand history de pe GG Poker</span>
+    <div style="margin-top:10px"><button id="pick" type="button" class="primary" tabindex="-1">Alege fișiere</button></div>
     <div id="busy" class="sub" aria-live="polite"></div>
   </div>
   <input id="file" type="file" accept=".txt,.zip" multiple class="hidden">
