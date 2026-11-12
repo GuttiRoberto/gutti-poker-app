@@ -2,16 +2,9 @@
 
 ## Stare
 
-- Ramurile pașilor 1–5 sunt unite în `main`.
-- Pagina **nu este încă publicată**: GitHub Pages nu este activat pe depozit, iar activarea se face doar din setările lui. Deploy-ul automat a rulat la push, a trecut testele și build-ul, și s-a oprit la pasul de publicare.
-
-## Ce mai ai de făcut (o singură dată)
-
-1. Pe GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. **Actions → Publicare pe GitHub Pages → Run workflow** (sau orice push pe `main`).
-3. Pagina va fi la **https://guttiroberto.github.io/gutti-poker-app/**
-
-Depozitul este privat. Pe un cont GitHub gratuit, Pages nu se poate activa pe un depozit privat; este nevoie de GitHub Pro sau de un depozit public. Dacă îl faci public, devin vizibile și cele 20 de mâini reale din `test/fixtures/` și `data/ranges.json`. Site-ul publicat conține doar pagina, fără mâini.
+- Pagina este publicată: **https://guttiroberto.github.io/gutti-poker-app/**
+- Ramurile pașilor 1–5 sunt unite în `main`; deploy-ul rulează automat la fiecare push pe `main` (teste, build, publicare).
+- Depozitul a fost făcut public ca să permită GitHub Pages pe un cont gratuit. Sunt deci vizibile și cele 20 de mâini reale din `test/fixtures/` și `data/ranges.json`. Site-ul publicat conține doar pagina, fără mâini.
 
 ## Ce face pagina
 
