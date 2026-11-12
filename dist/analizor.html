@@ -158,6 +158,7 @@ function assignPositions(players, buttonSeat, sbName, bbName) {
 
 function parseOne(text) {
   const lines = text.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l !== '');
+  if (/^Poker Hand #\S+?: Tournament #/.test(lines[0])) return { tournament: true, id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?' }; // turneele nu fac parte din analiza de cash
   // antet tolerant: după blinduri pot urma alte detalii în paranteză (ante, straddle), iar semnul $ poate lipsi
   const head = /^Poker Hand #(\S+?): (.+?) \(\$?([\d.,]+)\/\$?([\d.,]+)[^)]*\)[^0-9]*(\d{4})[/-](\d\d)[/-](\d\d)[ T](\d\d:\d\d:\d\d)/.exec(lines[0]);
   if (!head) return { error: 'antet necunoscut', id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?', sample: lines[0].slice(0, 160) };
@@ -317,7 +318,7 @@ function parseOne(text) {
 
 // Întoarce mâinile valide, cele respinse (cu motiv), dublurile eliminate și liniile necunoscute numărate pe formă.
 function parseHands(text, seen = new Set()) {
-  const out = { hands: [], rejected: [], duplicates: 0, unknownLines: {}, total: 0 };
+  const out = { hands: [], rejected: [], duplicates: 0, unknownLines: {}, total: 0, tournaments: 0 };
   const clean = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const parts = clean.split(/\n(?=Poker Hand #)/);
   for (const part of parts) {
@@ -329,6 +330,7 @@ function parseHands(text, seen = new Set()) {
     out.total++;
     let r;
     try { r = parseOne(part); } catch (e) { r = { error: `eroare de citire: ${e.message}`, id: (/#(\S+?):/.exec(part) ?? [])[1] ?? '?' }; }
+    if (r.tournament) { out.tournaments++; continue; }
     if (r.error) { out.rejected.push({ id: r.id, reason: r.error, ...(r.sample ? { sample: r.sample } : {}) }); continue; }
     if (seen.has(r.hand.id)) { out.duplicates++; continue; }
     seen.add(r.hand.id);
@@ -844,8 +846,9 @@ function summarizeAllin(hands) {
   const se = Math.sqrt(withAi.reduce((s, h) => s + bbOf(h) ** 2, 0));
   const net = hands.reduce((s, h) => s + h.heroNetBb, 0);
   const n = hands.length;
+  // all-in-urile de pe river nu intră la „cât de favorit ai fost”: rezultatul este deja cunoscut, deci echitatea este 0% sau 100%
   const band = (b) => {
-    const l = withAi.filter((h) => h.allin.equity >= b.min && h.allin.equity < b.max);
+    const l = withAi.filter((h) => h.allin.street !== 'river' && h.allin.equity >= b.min && h.allin.equity < b.max);
     const wins = l.filter((h) => h.heroCollected > 0).length;
     return { label: b.label, n: l.length, expectedWin: l.length ? (100 * l.reduce((s, h) => s + h.allin.equity, 0)) / l.length : null,
       actualWin: l.length ? (100 * wins) / l.length : null, luck: l.reduce((s, h) => s + bbOf(h), 0) };
@@ -1036,7 +1039,7 @@ const nCell = (n) => `${n.toLocaleString('ro-RO')}${smallTag(n)}`;
 const usdTxt = (x) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 2)} $</span>`;
 const ciTxt = (c) => (c.lo == null ? '–' : `<span class="ci">IC 95%: ${c.lo < 0 ? '−' : '+'}${nf(Math.abs(c.lo))} … ${c.hi < 0 ? '−' : '+'}${nf(Math.abs(c.hi))}</span>`);
 
-const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, store: null, last: null };
+const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null };
 
 // Procent cu n și interval de încredere; sub pragul minim nu se colorează și nu se compară cu reperul.
 function pctCell(p, refKey) {
@@ -1082,6 +1085,7 @@ function renderStatus() {
   const headShapes = {};
   for (const r of state.rejected) if (r.sample && r.reason.startsWith('antet')) { const k = r.sample.replace(/#\S+?:/, '#ID:').replace(/[0-9]/g, 'N').slice(0, 110); headShapes[k] = (headShapes[k] ?? 0) + 1; }
   const headList = Object.entries(headShapes).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (state.tournaments) html += `<p class="sub" style="margin-top:10px">${state.tournaments.toLocaleString('ro-RO')} mâini de turneu (freeroll, Spin&amp;Gold etc.) ignorate: analiza este doar pentru cash.</p>`;
   if (state.rejected.length) html += `<div class="note"><b>Mâini respinse:</b><ul class="plain">${Object.entries(reasons).map(([k, v]) => `<li>${esc(k)}: ${v}</li>`).join('')}</ul>
     ${headList.length ? `<p class="sub" style="margin:8px 0 0">Forme de antet necunoscute:</p><ul class="plain">${headList.map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul>` : ''}
     <details><summary>Lista (${state.rejected.length})</summary><ul class="plain">${state.rejected.slice(0, 200).map((r) => `<li>${esc(r.id)} — ${esc(r.reason)}</li>`).join('')}</ul></details></div>`;
@@ -1134,7 +1138,7 @@ function render() {
       <div class="kpi"><b>${bbTxt(AI.net)} bb</b><span>rezultat real (${bbTxt(AI.bb100)} bb/100)</span></div>
       <div class="kpi"><b>${bbTxt(AI.evNet)} bb</b><span>rezultat cu EV all-in (${bbTxt(AI.evBb100)} bb/100)</span></div>
       <div class="kpi"><b>${luckTxt(AI.luckBb)} bb</b><span>noroc (real − așteptat), marjă normală ±${nf(margin, 0)} bb</span></div></div>${verdict}
-      <h3>După cât de favorit ai fost</h3>${table(['Situația la all-in', '#All-in-uri', '#Echitate medie', '#Câștigate efectiv', '#Noroc (bb)'],
+      <h3>După cât de favorit ai fost (fără river)</h3>${table(['Situația la all-in', '#All-in-uri', '#Echitate medie', '#Câștigate efectiv', '#Noroc (bb)'],
         AI.bands.map((b) => [esc(b.label), nCell(b.n), `${nf(b.expectedWin, 0)}%`, `${nf(b.actualWin, 0)}%`, luckTxt(b.luck)]))}
       <h3>După stradă</h3>${table(['Stradă', '#All-in-uri', '#Noroc (bb)'], AI.streets.map((x) => [x.street, nCell(x.n), luckTxt(x.luck)]))}
       <p class="sub" style="margin-top:10px">${AI.pending ? `Se mai calculează ${AI.pending.toLocaleString('ro-RO')} mâini… ` : ''}Echitatea se calculează din cărțile arătate la all-in (la preflop prin simulare, cu mică eroare); egalitățile împart potul și rake-ul este scăzut. Nu spune dacă all-in-ul a fost o decizie bună, ci doar cât de mult a contat norocul.${skippedTxt ? ` Sărite: ${skippedTxt}.` : ''}</p>`;
@@ -1241,7 +1245,7 @@ function ingest(records) {
   if (!records.length) return;
   const r = parseHands(records.map((x) => x.text).join('\n\n'), state.seen);
   for (const h of r.hands) h.cls = classify(h);
-  state.hands.push(...r.hands); state.rejected.push(...r.rejected);
+  state.hands.push(...r.hands); state.rejected.push(...r.rejected); state.tournaments += r.tournaments;
   for (const [k, v] of Object.entries(r.unknownLines)) state.unknown[k] = (state.unknown[k] ?? 0) + v;
 }
 

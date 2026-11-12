@@ -20,7 +20,7 @@ const nCell = (n) => `${n.toLocaleString('ro-RO')}${smallTag(n)}`;
 const usdTxt = (x) => `<span class="${x < 0 ? 'neg' : x > 0 ? 'pos' : ''}">${x > 0 ? '+' : x < 0 ? '−' : ''}${nf(Math.abs(x), 2)} $</span>`;
 const ciTxt = (c) => (c.lo == null ? '–' : `<span class="ci">IC 95%: ${c.lo < 0 ? '−' : '+'}${nf(Math.abs(c.lo))} … ${c.hi < 0 ? '−' : '+'}${nf(Math.abs(c.hi))}</span>`);
 
-const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, store: null, last: null };
+const state = { hands: [], seen: new Set(), rejected: [], unknown: {}, tournaments: 0, store: null, last: null };
 
 // Procent cu n și interval de încredere; sub pragul minim nu se colorează și nu se compară cu reperul.
 function pctCell(p, refKey) {
@@ -66,6 +66,7 @@ function renderStatus() {
   const headShapes = {};
   for (const r of state.rejected) if (r.sample && r.reason.startsWith('antet')) { const k = r.sample.replace(/#\S+?:/, '#ID:').replace(/[0-9]/g, 'N').slice(0, 110); headShapes[k] = (headShapes[k] ?? 0) + 1; }
   const headList = Object.entries(headShapes).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (state.tournaments) html += `<p class="sub" style="margin-top:10px">${state.tournaments.toLocaleString('ro-RO')} mâini de turneu (freeroll, Spin&amp;Gold etc.) ignorate: analiza este doar pentru cash.</p>`;
   if (state.rejected.length) html += `<div class="note"><b>Mâini respinse:</b><ul class="plain">${Object.entries(reasons).map(([k, v]) => `<li>${esc(k)}: ${v}</li>`).join('')}</ul>
     ${headList.length ? `<p class="sub" style="margin:8px 0 0">Forme de antet necunoscute:</p><ul class="plain">${headList.map(([k, v]) => `<li>${v} × <code>${esc(k)}</code></li>`).join('')}</ul>` : ''}
     <details><summary>Lista (${state.rejected.length})</summary><ul class="plain">${state.rejected.slice(0, 200).map((r) => `<li>${esc(r.id)} — ${esc(r.reason)}</li>`).join('')}</ul></details></div>`;
@@ -118,7 +119,7 @@ function render() {
       <div class="kpi"><b>${bbTxt(AI.net)} bb</b><span>rezultat real (${bbTxt(AI.bb100)} bb/100)</span></div>
       <div class="kpi"><b>${bbTxt(AI.evNet)} bb</b><span>rezultat cu EV all-in (${bbTxt(AI.evBb100)} bb/100)</span></div>
       <div class="kpi"><b>${luckTxt(AI.luckBb)} bb</b><span>noroc (real − așteptat), marjă normală ±${nf(margin, 0)} bb</span></div></div>${verdict}
-      <h3>După cât de favorit ai fost</h3>${table(['Situația la all-in', '#All-in-uri', '#Echitate medie', '#Câștigate efectiv', '#Noroc (bb)'],
+      <h3>După cât de favorit ai fost (fără river)</h3>${table(['Situația la all-in', '#All-in-uri', '#Echitate medie', '#Câștigate efectiv', '#Noroc (bb)'],
         AI.bands.map((b) => [esc(b.label), nCell(b.n), `${nf(b.expectedWin, 0)}%`, `${nf(b.actualWin, 0)}%`, luckTxt(b.luck)]))}
       <h3>După stradă</h3>${table(['Stradă', '#All-in-uri', '#Noroc (bb)'], AI.streets.map((x) => [x.street, nCell(x.n), luckTxt(x.luck)]))}
       <p class="sub" style="margin-top:10px">${AI.pending ? `Se mai calculează ${AI.pending.toLocaleString('ro-RO')} mâini… ` : ''}Echitatea se calculează din cărțile arătate la all-in (la preflop prin simulare, cu mică eroare); egalitățile împart potul și rake-ul este scăzut. Nu spune dacă all-in-ul a fost o decizie bună, ci doar cât de mult a contat norocul.${skippedTxt ? ` Sărite: ${skippedTxt}.` : ''}</p>`;
@@ -225,7 +226,7 @@ function ingest(records) {
   if (!records.length) return;
   const r = parseHands(records.map((x) => x.text).join('\n\n'), state.seen);
   for (const h of r.hands) h.cls = classify(h);
-  state.hands.push(...r.hands); state.rejected.push(...r.rejected);
+  state.hands.push(...r.hands); state.rejected.push(...r.rejected); state.tournaments += r.tournaments;
   for (const [k, v] of Object.entries(r.unknownLines)) state.unknown[k] = (state.unknown[k] ?? 0) + v;
 }
 

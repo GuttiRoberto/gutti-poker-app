@@ -60,8 +60,9 @@ export function summarizeAllin(hands) {
   const se = Math.sqrt(withAi.reduce((s, h) => s + bbOf(h) ** 2, 0));
   const net = hands.reduce((s, h) => s + h.heroNetBb, 0);
   const n = hands.length;
+  // all-in-urile de pe river nu intră la „cât de favorit ai fost”: rezultatul este deja cunoscut, deci echitatea este 0% sau 100%
   const band = (b) => {
-    const l = withAi.filter((h) => h.allin.equity >= b.min && h.allin.equity < b.max);
+    const l = withAi.filter((h) => h.allin.street !== 'river' && h.allin.equity >= b.min && h.allin.equity < b.max);
     const wins = l.filter((h) => h.heroCollected > 0).length;
     return { label: b.label, n: l.length, expectedWin: l.length ? (100 * l.reduce((s, h) => s + h.allin.equity, 0)) / l.length : null,
       actualWin: l.length ? (100 * wins) / l.length : null, luck: l.reduce((s, h) => s + bbOf(h), 0) };

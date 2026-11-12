@@ -255,3 +255,11 @@ test('antet: detaliile suplimentare din paranteză sunt acceptate, iar un antet 
   assert.equal(r.rejected[0].reason, 'antet necunoscut');
   assert.match(r.rejected[0].sample, /^Poker Hand #RCTEST1: ceva complet diferit/);
 });
+
+test('turnee: mâinile de turneu sunt ignorate, nu respinse', () => {
+  const t = 'Poker Hand #TM5555: Tournament #3333, Daily Freeroll to $5K Weekly Hold\'em No Limit - Level3(100/200(20)) - 2026/10/01 20:00:00\nTable \'1\' 9-max Seat #1 is the button\n';
+  const r = parseHands(t + '\n\n' + STRADDLE_HAND);
+  assert.equal(r.tournaments, 1);
+  assert.deepEqual(r.rejected, []);
+  assert.equal(r.hands.length, 1);
+});

@@ -38,6 +38,7 @@ function assignPositions(players, buttonSeat, sbName, bbName) {
 
 function parseOne(text) {
   const lines = text.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l !== '');
+  if (/^Poker Hand #\S+?: Tournament #/.test(lines[0])) return { tournament: true, id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?' }; // turneele nu fac parte din analiza de cash
   // antet tolerant: după blinduri pot urma alte detalii în paranteză (ante, straddle), iar semnul $ poate lipsi
   const head = /^Poker Hand #(\S+?): (.+?) \(\$?([\d.,]+)\/\$?([\d.,]+)[^)]*\)[^0-9]*(\d{4})[/-](\d\d)[/-](\d\d)[ T](\d\d:\d\d:\d\d)/.exec(lines[0]);
   if (!head) return { error: 'antet necunoscut', id: (/#(\S+?):/.exec(lines[0]) ?? [])[1] ?? '?', sample: lines[0].slice(0, 160) };
@@ -197,7 +198,7 @@ function parseOne(text) {
 
 // Întoarce mâinile valide, cele respinse (cu motiv), dublurile eliminate și liniile necunoscute numărate pe formă.
 export function parseHands(text, seen = new Set()) {
-  const out = { hands: [], rejected: [], duplicates: 0, unknownLines: {}, total: 0 };
+  const out = { hands: [], rejected: [], duplicates: 0, unknownLines: {}, total: 0, tournaments: 0 };
   const clean = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const parts = clean.split(/\n(?=Poker Hand #)/);
   for (const part of parts) {
@@ -209,6 +210,7 @@ export function parseHands(text, seen = new Set()) {
     out.total++;
     let r;
     try { r = parseOne(part); } catch (e) { r = { error: `eroare de citire: ${e.message}`, id: (/#(\S+?):/.exec(part) ?? [])[1] ?? '?' }; }
+    if (r.tournament) { out.tournaments++; continue; }
     if (r.error) { out.rejected.push({ id: r.id, reason: r.error, ...(r.sample ? { sample: r.sample } : {}) }); continue; }
     if (seen.has(r.hand.id)) { out.duplicates++; continue; }
     seen.add(r.hand.id);

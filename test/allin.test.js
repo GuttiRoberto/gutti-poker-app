@@ -97,7 +97,7 @@ test('sinteză: noroc, marjă și grupare după echitate', () => {
   assert.ok(Math.abs(s.luckBb - luck) < 1e-9);
   assert.ok(Math.abs(s.evNet - (s.net - s.luckBb)) < 1e-9);
   assert.ok(s.se > 0);
-  assert.equal(s.bands.reduce((a, b) => a + b.n, 0), 3);
+  assert.equal(s.bands.reduce((a, b) => a + b.n, 0), 2); // all-in-ul de pe river nu intră în grupe
   // mâini fără câmpul calculat sunt „în așteptare”
   assert.equal(summarizeAllin(parsed.hands.map((h) => ({ ...h, allin: undefined }))).pending, 20);
 });
